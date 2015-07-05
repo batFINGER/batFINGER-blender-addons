@@ -49,17 +49,14 @@ def finddriver(self, context):
             driver = search.animation_data.drivers[-1]
             clip = context.window_manager.clipboard
             if driver.select and driver.data_path.find(clip) > -1:
-                print("return %s.%s" % (search.name, driver.data_path))
                 return(len(search.animation_data.drivers) - 1, driver)
         except:
             continue
     self.report({'WARNING'}, "No Driver found ... REMOVED")
-    dprint("No driver found")
     return(-1, None)
 
 
 def main(self, context, speaker, action, channel_list):
-    print("MAIN", channel_list)
     if context is None or len(channel_list) == 0:
         return False
 
@@ -72,15 +69,11 @@ def main(self, context, speaker, action, channel_list):
     xlist = create_drivers_list()
     driver = [driver for xx in xlist for driver in
               xlist[xx]][self.driver_index]
-    print("MAIN", driver)
 
     if driver:
         all_channels, args = get_driver_settings(driver, speaker)
-        print(all_channels)
-        print(action["channel_name"])
         speaker_channels = [ch for ch in all_channels if
                             ch.startswith(channel)]
-        print(speaker_channels)
 
         diff = set(all_channels) - set(speaker_channels)
         driver = driver.driver
@@ -98,10 +91,8 @@ def main(self, context, speaker, action, channel_list):
         channels = diff | set(channel_list)
         channels_list = list(sorted(channels))
         #channels_list = channels_list.sort()
-        #print("CHANNELS", sorted(channels))
         ctxt = str(channels_list).replace("'", "").replace(" ", "")
         new_expr = 'SoundDrive(%s%s)' % (ctxt, extravars)
-        print("LEN", len(new_expr))
         if len(new_expr) < 256:
             driver.expression = new_expr
             for channel in channel_list:
@@ -133,9 +124,6 @@ def glipglip(self, context):
     else:
         speaker = bpy.types.Scene.context_speaker
     '''
-    print("glip", self.glip0)
-    print(self.glip0[0])
-    print(self.amplify)
     #self.channel = "Channel%d"%10
     action = getAction(speaker)
     channel_name = "CH"  # default
@@ -144,13 +132,62 @@ def glipglip(self, context):
         channel_name = action["channel_name"]
 
     channel_list = []
+    glips = [self.glip0, self.glip1, self.glip2]
     for i in range(0, channels):
-        glip_index = i / 32
+        glip_index = i // 32
         j = i % 32
-        if eval("self.glip%d[%d]" % (glip_index, j)):
+        if glips[glip_index][j]:
             channel_list.append("%s%d" % (channel_name, i))
     main(self, context, speaker, action, channel_list)
+    if self.filter_sound:
+        print("filtersound")
+        filter_sound(self, context)
     return None
+
+
+def speaker_filter_sound(self, context):
+    self.muted = self.filter_sound
+    return None
+
+
+def get_sound_channel(scene, name):
+    sound_channel = scene.sound_channels.get(name)
+    if not sound_channel:
+        sound_channel = scene.sound_channels.add()
+        sound_channel.name = name
+    return sound_channel
+
+
+def filter_sound(self, context):
+    #print(type(self))
+    print(dir(self))
+    print("FILTER SOUND", self.filter_sound)
+    scene = context.scene
+
+    name = AddCustomSoundDriverToChannel.idname
+    speaker_name, action_name = name.split("__@__")
+    speaker = bpy.data.speakers.get(speaker_name)
+    speaker.filter_sound = self.filter_sound
+    speaker_filter_sound(speaker, context)
+    glips = (self.glip0, self.glip1, self.glip2)
+    #print(AddCustomSoundDriverToChannel.idname)
+    if self.filter_sound:
+
+        sound_channel = get_sound_channel(scene, name)
+        action = bpy.data.actions.get(action_name)
+        if scene.use_preview_range:
+            frame_start = scene.frame_preview_start
+            frame_end = scene.frame_preview_end
+        else:
+            frame_start = scene.frame_start
+            frame_end = scene.frame_end
+        fs = max(action.frame_range.x, frame_start)
+        # have to go back to start to enable effect
+        scene.frame_set(fs)
+
+        for i in range(92):
+            glip = glips[i // 32]
+            setattr(sound_channel, "channel%02d" % i, glip[i % 32])
 
 
 def sync_play(self, context):
@@ -178,6 +215,8 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
     contextspeakername = StringProperty(default="None", options={'SKIP_SAVE'})
     driver_index = IntProperty(default=-1, options={'SKIP_SAVE'})
     sync_play = BoolProperty(default=False, update=sync_play)
+    filter_sound = BoolProperty(default=False, update=filter_sound,
+                      description="Filter Sound to Selected Channels")
     delete_index = IntProperty(default=-1, options={'SKIP_SAVE'})
     fcurve_index = IntProperty(default=-1, options={'SKIP_SAVE'})
 
@@ -206,23 +245,23 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
                            min=0.0,
                            max=1.0)
 
-    glip0 = BoolVectorProperty(name="Bools",
-                               update=glipglip,
-                               size=32,
-                               options={'SKIP_SAVE'},
-                               default=(False for i in range(0, 32)))
-
-    glip1 = BoolVectorProperty(name="Bools",
+    glip0 = BoolVectorProperty(name="glip0",
                                update=glipglip,
                                size=32,
                                default=(False for i in range(0, 32)))
 
-    glip2 = BoolVectorProperty(name="Bools",
+    glip1 = BoolVectorProperty(name="glip1",
+                               update=glipglip,
+                               size=32,
+                               default=(False for i in range(0, 32)))
+
+    glip2 = BoolVectorProperty(name="glip2",
                                update=glipglip,
                                size=32,
                                default=(False for i in range(0, 32)))
 
     mode = IntProperty(default=0)
+    idname = ""
 
     @classmethod
     def poll(cls, context):
@@ -233,10 +272,6 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
         scene = context.scene
         screen = context.screen
         speaker = None
-        print("INVOKE")
-        print(self.bl_idname)
-        print(self.contextspeakername)
-        print(".......................")
         self.sync_play = screen.is_animation_playing
 
         # set the context speaker
@@ -279,51 +314,85 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
             #self.delete_index = -1 #  SKIP_SAVE
             return {'FINISHED'}
 
+        speaker = getSpeaker(context)
+        action = getAction(speaker)
+
+        if self.fcurve_index != -1:
+            driver, bpy_path = [(driver, xx) for xx in xlist
+                                 for driver in xlist[xx]][self.fcurve_index]
+            #make an unbaked fcurve for the driver.
+            # check whether there is already an fcurve
+            if driver.id_data.animation_data.action:
+                raction = driver.id_data.animation_data.action
+                fcurves = [fcurve for fcurve in raction.fcurves
+                           if fcurve.data_path == driver.data_path
+                           and fcurve.array_index == driver.array_index]
+                if len(fcurves):
+                    # remove the fcurve and return
+                    raction.fcurves.remove(fcurves[0])
+                    # remove the action if empty
+                    if not len(action.fcurves):
+                        bpy.data.actions.remove(raction)
+                    return{'FINISHED'}
+            scene_frame = scene.frame_current
+            frame = action.frame_range[0]
+            frame_end = action.frame_range[1]
+            print("BAKING", driver.id_data, driver.data_path,
+                  driver.array_index)
+            while frame <= frame_end:
+                scene.frame_set(frame)
+                # quick fix try array, then without
+                #print(type(driver.id_data))
+                try:
+                    driver.id_data.keyframe_insert(driver.data_path,
+                                               index=driver.array_index)
+                except:
+                    driver.id_data.keyframe_insert(driver.data_path)
+                finally:
+                    frame = frame + 1
+
+            scene.frame_set(scene_frame)
+            return {'FINISHED'}
+
         driver, bpy_path = [(driver, xx) for xx in xlist
                   for driver in xlist[xx]][self.driver_index]
         if driver is None:
             #wierd bug
             return {'CANCELLED'}
-        speaker = getSpeaker(context)
-        action = getAction(speaker)
 
+        '''
         scene.frame_preview_start = action.frame_range[0]
         scene.frame_preview_end = action.frame_range[1]
+        '''
 
-        if self.fcurve_index != -1:
-            #make an unbaked fcurve for the driver.
-            scene_frame = scene.frame_current
-            frame = action.frame_range[0]
-            frame_end = action.frame_range[1]
-            while frame <= frame_end:
-                scene.frame_set(frame)
-                driver.id_data.keyframe_insert(driver.data_path,
-                                               index=driver.array_index)
-                frame = frame + 1
-            scene.frame_set(scene_frame)
-            return {'FINISHED'}
         channels, args = get_driver_settings(driver, speaker)
         action_channels = [channel for channel in channels
                            if channel.startswith(action["channel_name"])]
-        '''
+        glips = [self.glip0, self.glip1, self.glip2]
         for arg in args:
             try:
-                exec("self.%s" % arg)
+                #print("new code to remove exec")
+                name, value = arg.split("=")
+
+                setattr(self, name, eval(value))
+                #exec("self.%s" % arg)
             except:
+                print("arg not working")
                 pass
 
-        '''
-        print("ACTION_CHANNELS", action_channels)
         for channel in action_channels:
             xx = [int(i) for i in re.findall(r'\d+', str(action_channels))]
             for i in xx:
-                glip = eval("self.glip%d" % (i / 32))
+                glip = glips[i // 32]
                 glip[i % 32] = True
 
         self.contextspeakername = speaker.name
 
         self.mode = 1
+        AddCustomSoundDriverToChannel.idname = "%s__@__%s"\
+                                             % (speaker.name, action.name)
         wm = context.window_manager
+
         return wm.invoke_popup(self)
         #return {'FINISHED'}
 
@@ -334,7 +403,6 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
         (driver, bpy_path) = [(driver, xx) for xx in xlist
                   for driver in xlist[xx]][self.driver_index]
 
-        print(bpy_path)
         if driver is None:
             # put in some message that driver not found
             return None
@@ -342,8 +410,8 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
         space = context.space_data
         obj = eval(bpy_path)
         sp = driver.data_path.split(".")
-        prop = sp[-1]
-        path = driver.data_path.replace("%s" % prop, "")
+        prop = sp.pop()
+        path = ".".join(sp)
         bpy_data_path = "%s.%s" % (bpy_path, path)
         if bpy_data_path[-1] == '.':
             bpy_data_path = bpy_data_path[:-1]
@@ -384,7 +452,15 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
             axis = "WXYZ"[driver.array_index]
             txt = "%s %s" % (axis, do.bl_rna.properties[prop].name)
             row.prop(do, prop, text=txt, index=driver.array_index, slider=True)
-
+        elif type(mo).__name__ == "bpy_prop_array":
+            if prop == "color":
+                row.prop(do, prop, text="")
+                row = layout.row()
+                axis = "RGBA"[driver.array_index]
+                txt = "%s %s" % (axis, do.bl_rna.properties[prop].name)
+                row.prop(do, prop, text=txt,
+                         index=driver.array_index,
+                         slider=True)
         else:
             row.prop(do, prop, index=driver.array_index)
 
@@ -443,54 +519,12 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
         #layout.operator("screen.animation_play")
         row = layout.row(align=True)
         row.prop(self, "sync_play", toggle=True, text="PLAY", icon="PLAY")
+        row.prop(self, "filter_sound", toggle=True, icon="SPEAKER")
         row = layout.row(align=True)
         row.prop(scene, "use_preview_range", text="", toggle=True)
 
         row.prop(scene, "frame_preview_start", text="Start")
         row.prop(scene, "frame_preview_end", text="End")
-        '''
-        layout.prop(scene, "frame_current")
-        layout.separator()
-        layout.prop(scene, "use_preview_range", text="", toggle=True)
-
-        row = layout.row(align=True)
-        if not scene.use_preview_range:
-            row.prop(scene, "frame_start", text="Start")
-            row.prop(scene, "frame_end", text="End")
-        else:
-            row.prop(scene, "frame_preview_start", text="Start")
-            row.prop(scene, "frame_preview_end", text="End")
-
-        layout.prop(scene, "frame_current", text="")
-
-        layout.separator()
-
-
-        row = layout.row(align=True)
-        row.operator("screen.frame_jump", text="", icon='REW').end = False
-        row.operator("screen.keyframe_jump", text="", \
-                icon='PREV_KEYFRAME').next = False
-        if not screen.is_animation_playing:
-            # if using JACK and A/V sync:
-            #   hide the play-reversed button
-            #   since JACK transport doesn't support reversed playback
-            if scene.sync_mode == 'AUDIO_SYNC' and\
-               context.user_preferences.system.audio_device == 'JACK':
-                sub = row.row()
-                sub.scale_x = 2.0
-                sub.operator("screen.animation_play", text="", icon='PLAY')
-            else:
-                row.operator("screen.animation_play", text="",\
-                    icon='PLAY_REVERSE').reverse = True
-                row.operator("screen.animation_play", text="", icon='PLAY')
-        else:
-            sub = row.row()
-            sub.scale_x = 2.0
-            sub.operator("screen.animation_play", text="", icon='PAUSE')
-        row.operator("screen.keyframe_jump", text="",\
-                icon='NEXT_KEYFRAME').next = True
-        row.operator("screen.frame_jump", text="", icon='FF').end = True
-        '''
 
     def execute(self, context):
         #self.mode = 1
@@ -532,16 +566,13 @@ class SimpleOperator(bpy.types.Operator):
         if x == {'FINISHED'}:  # driver copied.
             try:
                 bpy.ops.anim.paste_driver_button()
-                print("PASTED")
                 xlist = create_drivers_list()
                 bpy.ops.anim.paste_driver_button()
                 driverlist_after = [driver for xx in xlist
                                     for driver in xlist[xx]]
                 after = set(driverlist_after)
-                print(len(driverlist), len(driverlist_after))
                 changed = after - driverlist
                 index = driverlist_after.index(list(changed)[0])
-                print("CHANGED:", changed, index)
                 return(bpy.ops.speaker.add_driver_channel('INVOKE_DEFAULT',
                                                           driver_index=index))
             except:
@@ -552,11 +583,8 @@ class SimpleOperator(bpy.types.Operator):
         context.scene.update()
         driverlist_after = [driver for xx in xlist for driver in xlist[xx]]
         after = set(driverlist_after)
-        print(len(driverlist), len(driverlist_after))
         changed = after - driverlist
-        print("CHANGED:", changed)
         index = driverlist_after.index(list(changed)[0])
-        print("CHANGED:", changed, index)
         return(bpy.ops.speaker.add_driver_channel('INVOKE_DEFAULT',
                                                   driver_index=index))
 
@@ -590,7 +618,6 @@ class ContextSpeakerMenu(bpy.types.Menu):
 
 
 def setcontextspeaker(name):
-    #print("Set context speaker ", name)
     xlist = create_drivers_list()
     #global GLOBALdriverlist
     #GLOBALdriverlist = set([driver for xx in xlist for driver in xlist[xx]])
@@ -614,6 +641,8 @@ def rightclickfudge(self, context):
     on = self.rightclick == 'ON'
     overwriteviewdoc(on)
 
+bpy.types.Scene.speaker_settings = BoolProperty(name="Speaker Tools Settings",
+                                               default=False)
 bpy.types.Scene.rightclick = EnumProperty(items=(
             ("OFF", "OFF", "Prop toolbox right click off"),
             ("ON", "ON", "Overwrite view docs operator"),
@@ -641,13 +670,27 @@ class SoundToolPanel(bpy.types.Panel):
 
     def draw_header(self, context):
         scene = context.scene
-        rd = scene.render
+        #rd = scene.render
 
-        self.layout.prop(rd, "use_motion_blur", text="")
-        self.layout.prop(scene, "rightclick", expand=True)
+        self.layout.prop(scene, "speaker_settings", text="")
 
     def draw(self, context):
         layout = self.layout
+        scene = context.scene
+        if scene.speaker_settings:
+            row = layout.row()
+            box = row.box()
+            row = box.row()
+            row.label(text="Right Click Override", icon="INFO")
+            row = box.row()
+            row.prop(scene, "rightclick", expand=True)
+            if scene.rightclick == 'ON':
+                box.label("Overriden Op")
+                box.label("View Online Python Reference")
+            row = layout.row()
+            props = scene.speaker_tool_settings
+            row.prop(props, "material_driver_fix", text="Material Driver Fix",
+                    toggle=True, icon='MATERIAL_DATA')
         row = layout.row()
         context_speaker = bpy.types.Scene.context_speaker
         if context_speaker is not None:
@@ -667,14 +710,13 @@ class SoundToolPanel(bpy.types.Panel):
             AllDriversPanel(box, context)
         else:
             row.menu("speaker.select_contextspeaker")
-            row = layout.row()
-            box = row.box()
-            box.label("Drive using the view docs operator", icon="INFO")
 
 
 def register():
 
     #bpy.utils.register_class(SimpleOperator)
+    bpy.types.Speaker.filter_sound = BoolProperty(default=False,
+                                                  update=speaker_filter_sound)
     bpy.utils.register_class(ContextSpeakerSelectMenu)
     bpy.utils.register_class(AddCustomSoundDriverToChannel)
     bpy.utils.register_class(ContextSpeakerMenu)

@@ -3,8 +3,9 @@ import bpy
 from bpy.app.handlers import persistent
 from bpy.props import *
 from bpy.utils import preset_find, preset_paths
+from bpy.types import PropertyGroup
 
-from math import log
+from math import log, sqrt
 from mathutils import Vector, Color
 from speaker_tools.NLALipsync import SoundTools_LipSync_PT
 from speaker_tools.presets import AddPresetSoundToolOperator
@@ -195,7 +196,7 @@ class SoundVisualiserPanel(DataButtonsPanel, bpy.types.Panel):
         if not has_sound:
             return
 
-        if speaker.vismode == "SOUND":
+        if speaker.vismode == 'SOUND':
             box.label("Sound", icon='FILE_SOUND')
             soundbox = box.box()
             row = soundbox.row()
@@ -262,6 +263,8 @@ class SoundVisualiserPanel(DataButtonsPanel, bpy.types.Panel):
 
             if speaker.vismode == 'VISUAL':
                 showEqualiser(box, speaker, action)
+            elif speaker.vismode == 'OUT':
+                showFilterBox(box, context, speaker, action)
 
             elif speaker.vismode == 'DRIVERS':
                 if context.space_data.use_pin_id:
@@ -587,6 +590,9 @@ class SPEAKER_OT_Visualise(bpy.types.Operator):
         rna = dict()
         action_rna = dict()
         save_frame = context.scene.frame_current
+        '''
+        Always bake from frame 1
+        '''
         context.scene.frame_set(1)
         space = context.space_data
         area = context.area
@@ -664,17 +670,26 @@ class SPEAKER_OT_Visualise(bpy.types.Operator):
                 low = self.log_base ** low
                 high = self.log_base ** high
             fcurve.select = True
-            bpy.ops.graph.sound_bake(filepath=file,
+            try:
+                bpy.ops.graph.sound_bake(filepath=file,
                                      low=low,
                                      high=high,
                                      attack=self.attack,
                                      release=self.release,
                                      threshold=self.threshold,
-                                     accumulate=self.accumulate,
+                                     use_accumulate=self.accumulate,
                                      use_additive=self.use_additive,
-                                     square=self.square,
+                                     use_square=self.square,
                                      sthreshold=self.sthreshold,
                                      filter_sound=True)
+            except:
+                context.area.type = area_type
+                # remove soundaction
+                #bpy.data.actions.remove(soundaction)
+                print("ERROR ENCOUNTERED IN SOUND BAKING")
+                soundaction["bake_error"] = "BZZ"
+                return {'CANCELLED'}
+
             has_range, min_, max_ = getrange(fcurve, self.TOL)
             if min_ < MIN:
                 MIN = min_
@@ -751,10 +766,25 @@ class SPEAKER_OT_Visualise(bpy.types.Operator):
         context.area.type = area_type
         context.scene.frame_set(save_frame)
         speaker.vismode = 'VISUAL'
+
         soundaction.vismode = 'SLIDER'
+
         if self.preset > "":
             bpy.ops.wm.soundtool_operator_preset_add(name=self.preset,
                                                      operator=self.bl_idname)
+        '''
+        Move the Sound to Frame 1
+        '''
+        scene = context.scene
+        name = "%s__@__%s" % (speaker.name, soundaction.name)
+        sound_channels = scene.sound_channels.get(name)
+        if not sound_channels:
+            sound_channels = scene.sound_channels.add()
+            sound_channels.name = name
+
+        context.object.animation_data.nla_tracks["SoundTrack"]\
+                .strips["NLA Strip"].frame_start = 1.0
+
         return{'FINISHED'}
 
 
@@ -782,6 +812,55 @@ class DriverMenu(bpy.types.Menu):
 
     def draw(self, context):
         print("draw")
+
+
+def showFilterBox(layout, context, speaker, action):
+    if action:
+        scene = context.scene
+        minf = -1
+        maxf = -1
+        scale = action["row_height"]
+        name = "Channel"
+        if "Channels" in action:
+            channels = action["Channels"]
+            name = channel_name = action["channel_name"]
+            minf = action["minf"]
+            maxf = action["maxf"]
+            MIN = action["min"]
+            MAX = action["max"]
+            start = action["start"]
+            end = action["end"]
+        else:
+            channels = len(action.fcurves)
+            minf = 0.0
+            MIN = 0.0
+            maxf = 0.0
+            MAX = 0.0
+            start = 0
+            end = channels
+
+        if start >= end:
+            end = start + 1
+        i = start
+        box = layout
+        row = box.row()
+        row.prop(speaker, "filter_sound", toggle=True)
+        row = box.row()
+        COLS = int(sqrt(channels))
+        sound_channel_id = "%s__@__%s" % (speaker.name, action.name)
+
+        filter_item = scene.sound_channels.get(sound_channel_id)
+        if filter_item is not None:
+            for i in range(start, end + 1):
+                #box.split(percentage=0.50)
+                if not i % COLS:
+                    row = box.row()
+                col = row.column()
+                #BUGGY on speaker object
+                col.prop(filter_item,
+                         "channel%02d" % i,
+                         text="%s" % i,
+                         toggle=True)
 
 
 def showEqualiser(layout, speaker, action, info=True):
@@ -1088,6 +1167,69 @@ class ModalTimerOperator(bpy.types.Operator):
         return {'CANCELLED'}
 
 
+def mat_driver_fix(scene):
+    frame = scene.frame_current
+    fcurves = [fcurve for mat in bpy.data.materials
+               if mat.animation_data
+               for fcurve in mat.animation_data.drivers]
+    for fcurve in fcurves:
+        mat = fcurve.id_data
+        attr = fcurve.data_path
+        sp = attr.split(".")
+        if len(sp) > 1:
+            attr = sp.pop()
+            mat = mat.path_resolve(".".join(sp))
+        index = fcurve.array_index
+        value = fcurve.evaluate(frame)
+        ob = mat.path_resolve(attr)
+        if type(ob).__name__ in ["Vector", "Color", "bpy_props_array"]:
+            ob[index] = value
+        else:
+            setattr(mat, attr, value)
+
+
+def toggle_driver_fix(self, context):
+    print("HANDLER")
+    handler = bpy.app.handlers.frame_change_post
+
+    handlers = [f for f in handler if f.__name__ == "mat_driver_fix"]
+    for f in handlers:
+        handler.remove(f)
+    if self.material_driver_fix:
+        bpy.app.handlers.frame_change_post.append(mat_driver_fix)
+
+
+class SoundToolSettings(PropertyGroup):
+    material_driver_fix = BoolProperty(default=False, update=toggle_driver_fix,
+                                      description="Make material drivers live")
+    show_vis = BoolProperty(default=True, description="Show Visualiser")
+    filter_object = BoolProperty(default=True,
+                                 description="Filter Drivers by Objects")
+    filter_context = BoolProperty(default=True,
+                                  description="Filter Drivers by Context")
+    filter_material = BoolProperty(default=True,
+                                   description="Filter Drivers by Material")
+    filter_monkey = BoolProperty(default=True,
+                                 description="Filter Drivers by New (Monkeys)")
+    filter_texture = BoolProperty(default=True,
+                                  description="Filter Drivers by Texture")
+    filter_world = BoolProperty(default=True,
+                                description="Filter Drivers by World")
+    filter_speaker = BoolProperty(default=True,
+                                description="Filter Drivers by Speaker")
+    context_speaker = StringProperty(default="None")
+
+
+class SoundChannels(PropertyGroup):
+    name = StringProperty(default="SoundChannels")
+    action_name = StringProperty(default="SoundChannels")
+    pass
+
+for i in range(92):
+    setattr(SoundChannels, "channel%02d" % i,
+            BoolProperty(default=True, description="Channel %02d" % i))
+
+
 def dummy(self, context):
     return None
 
@@ -1101,6 +1243,7 @@ def register():
 
     bpy.types.Speaker.vismode = EnumProperty(items=(
                 ("SOUND", "SOUND", "Edit sound properties"),
+                ("OUT", "OUT", "Filter Output"),
                 ("VISUAL", "VISUAL", "Show sound visualiser")
                 ),
                 name="SoundDriver",
@@ -1138,10 +1281,18 @@ def register():
                 #update=setcontextspeakerENUM,
                 )
 
+    bpy.utils.register_class(SoundChannels)
+    #BUGGY on SPEAKER object
+    bpy.types.Scene.sound_channels = CollectionProperty(type=SoundChannels)
+
     bpy.types.Scene.play = BoolProperty("Play",
                 default=True,
                 description="Play Live",
                 update=dummy)
+
+    bpy.utils.register_class(SoundToolSettings)
+    bpy.types.Scene.speaker_tool_settings = \
+            PointerProperty(type=SoundToolSettings)
 
     bpy.types.Action.show_freq = BoolProperty(default=True)
     bpy.types.Scene.soundtool_op = None  # context.active_operator
@@ -1155,9 +1306,11 @@ def register():
 
 def unregister():
     defaultPanels(True)
+    bpy.utils.unregister_class(SoundChannels)
     bpy.utils.unregister_class(SPEAKER_OT_Visualise)
     bpy.utils.unregister_class(SoundVisualiserPanel)
     bpy.utils.unregister_class(SoundVisMenu)
     bpy.utils.unregister_class(ModalTimerOperator)
+    bpy.utils.unregister_class(SoundToolSettings)
 
     bpy.app.handlers.load_post.remove(InitSoundTools)

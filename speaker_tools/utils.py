@@ -25,6 +25,7 @@ def format_data_path(row, path, icon_only=False, padding=0):
              ('MODIFIER', r'modifiers\[(\S+)\]\.canvas_settings\.(\S+)'),
              ('CONSTRAINT', r'constraints\[(\S+)\]\.(\S+)'),
              ('SHAPEKEY_DATA', r'key_blocks\[(\S+)\]\.(\S+)'),
+             ('COLOR', r'color'),
               ]
     path = rep_spaces(path)
     for icon, regexp in rexps:
@@ -33,13 +34,17 @@ def format_data_path(row, path, icon_only=False, padding=0):
         # Material match
         if m is not None:
             padding -= 1
-            print(m.groups())
             col = row.column()
             col.alignment = 'LEFT'
             if not icon_only:
-                name = "[%s]" % rep_spaces(m.groups()[0], True)
+                if len(m.groups()):
+                    name = "[%s]" % rep_spaces(m.groups()[0], True)
+                else:
+                    name = "[%s]" % path
             col.label(icon=icon, text=name)
-            path = m.groups()[1]
+            if len(m.groups()):
+                path = m.groups()[1]
+
     if not icon_only:
         col = row.column()
         col.alignment = 'RIGHT'
@@ -84,6 +89,8 @@ def getAction(speaker, search=False):
     if speaker.animation_data:
         action = speaker.animation_data.action
         if action is not None:
+            if "bake_error" in action.keys():
+                return None
             return action
         if speaker.animation_data.use_nla:
             return None
@@ -94,9 +101,7 @@ def getAction(speaker, search=False):
 
 def getSpeaker(context):
     space = context.space_data
-    #print("GETSPEAKER",space)
     if space.type == 'PROPERTIES':
-        #print("GETSPEAKER PROPS",space.use_pin_id )
         if space.use_pin_id:
             return space.pin_id
         else:
@@ -111,12 +116,10 @@ def get_driver_settings(fcurve, speaker):
                 r'SoundDrive\((\S+)\)']
     expression = fcurve.driver.expression.replace(" ", "")  # replace the
 
-    #print("GET fcurve SETTINGS", expression, speaker)
     match = False
     for i, regex in enumerate(reg_exps):
         m = re.match(regex, expression)
         if m is not None:
-            print("MATCH", i, m.group(0), m.groups())
             match = True
             break
 
@@ -128,14 +131,11 @@ def get_driver_settings(fcurve, speaker):
         pass
 
     elif i == 0:  # list only match
-        print(i)
         channels.extend(m.groups()[0].split(","))
         args.extend(m.groups()[1].split(","))
     elif i == 1:  # list with vars
-        print(i)
         channels.extend(m.groups()[0].split(","))
     elif i == 2:  # single var
-        print(i)
         channels.append(m.groups()[0].split(",")[0])
         args = m.groups()[0].split(",")[1:]
 
@@ -154,6 +154,28 @@ def get_driver_settings(fcurve, speaker):
     return var_channels, args
 
 
+def driver_filter_draw(layout, context):
+    scene = context.scene
+    settings = scene.speaker_tool_settings
+    row = layout.row(align=True)
+    row.label("FILTER", icon='FILTER')
+    row.prop(settings, "filter_object", icon='OBJECT_DATA', toggle=True,
+            text="")
+    if settings.filter_object:
+        row.prop(settings, "filter_context", toggle=True,
+                text="CONTEXT")
+    row.prop(settings, "filter_world", icon='WORLD', toggle=True,
+            text="")
+    row.prop(settings, "filter_material", icon='MATERIAL', toggle=True,
+            text="")
+    row.prop(settings, "filter_texture", icon='TEXTURE', toggle=True,
+            text="")
+    row.prop(settings, "filter_monkey", icon='MONKEY', toggle=True,
+            text="")
+    row.prop(settings, "filter_speaker", icon='SPEAKER', toggle=True,
+            text="")
+
+
 def AllDriversPanel(box, context):
 
     def driver_icon(fcurve):
@@ -165,23 +187,42 @@ def AllDriversPanel(box, context):
         return 'DRIVER'
 
     #row.template_ID(context.scene.objects,'active')
+    scene = context.scene
+    settings = scene.speaker_tool_settings
     box.scale_y = box.scale_x = 0.8
+    driver_filter_draw(box, context)
     xlist = {}
     olist = {}
     xlist = create_drivers_list(xlist)
     i = 0
+    print("*" * 30)
     for xx in xlist:
-        proplist = []  # dont need multiples
-        #print("OBJ:",xx)
-        #print("DP:",driver.data_path)
         row = box.row()
+        if xx.startswith("bpy.data.objects") and not settings.filter_object:
+            i += len(xlist[xx])
+            continue
+        elif xx.startswith("bpy.data.materials") and not settings.filter_material:
+            i += len(xlist[xx])
+            continue
+
         obj = eval(xx)
+         
+        print(obj.name, obj, xx)
+
         if  context.scene.objects.active == obj:
             row.template_ID(context.scene.objects, 'active')
         else:
+            if settings.filter_context and xx.startswith("bpy.data.objects"):
+                i += len(xlist[xx])
+                continue
             row.label(text="", icon=icon_from_bpy_datapath(xx))
             row.prop(obj, "name", text="")
         for driver in xlist[xx]:
+            icon = driver_icon(driver)
+            if not icon.startswith("MONKEY") and settings.filter_monkey:
+                i += 1
+                continue
+
             can_edit = True
             row = box.row(align=True)
             #row.scale_y = row.scale_x = 0.8
@@ -190,7 +231,7 @@ def AllDriversPanel(box, context):
             infocol = infocol.row()
             infocol.alignment = 'LEFT'
             infocol.prop(driver.driver, "is_valid", text="",
-                         icon=driver_icon(driver))
+                         icon=icon)
             propcol = row.row()
             propcol = propcol.row(align=True)
             format_data_path(propcol, driver.data_path, True, padding=2)
@@ -218,25 +259,43 @@ def AllDriversPanel(box, context):
             elif isinstance(mo, Vector):
                 axis = "XYZ"[driver.array_index]
                 text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop, text=text, index=driver.array_index)
+                propcol.prop(do, prop, text=text,
+                             index=driver.array_index, slider=True)
 
             elif isinstance(mo, Euler):
                 axis = mo.order[driver.array_index]
                 text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop, text=text, index=driver.array_index)
+                propcol.prop(do, prop,
+                             text=text,
+                             index=driver.array_index,
+                             slider=True)
 
             elif isinstance(mo, Quaternion):
                 axis = "WXYZ"[driver.array_index]
                 text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop, text=text, index=driver.array_index)
+                propcol.prop(do, prop,
+                             text=text,
+                             index=driver.array_index,
+                             slider=True)
 
             elif isinstance(mo, Color):
                 rgb = "RGB"[driver.array_index]
                 text = "%s %s" % (rgb, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop, text=text, index=driver.array_index)
+                propcol.prop(do, prop,
+                             text=text,
+                             index=driver.array_index,
+                             slider=True)
 
+            elif type(mo).__name__ == "bpy_prop_array":
+                if prop == "color":
+                    axis = "RGBA"[driver.array_index]
+                    txt = "%s %s" % (axis, do.bl_rna.properties[prop].name)
+                    propcol.prop(do, prop,
+                                 text=txt,
+                                 index=driver.array_index,
+                                 slider=True)
             else:
-                propcol.prop(do, prop, index=driver.array_index)
+                propcol.prop(do, prop, index=driver.array_index, slider=True)
 
             split = buttoncol.split(align=True)
 

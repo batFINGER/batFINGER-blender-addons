@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+# <pep8-80 compliant>
 
 
 bl_info = {
@@ -31,7 +32,8 @@ bl_info = {
     "category": "Animation"}
 
 
-mods = ("Equalizer", "EqMenu", "NLALipsync", "utils", "presets")
+mods = ("Equalizer", "EqMenu", "NLALipsync",
+        "filter_playback", "utils", "presets")
 if "bpy" in locals():
     import imp
     for mod in mods:
