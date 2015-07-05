@@ -17,8 +17,12 @@ def note_from_freq(freq):
     return "%s%d" % (note, octave)
 
 
+def freq_from_note(note):
+    octave = note[-1]
+    step = notes.index(note[:-1])
+
+
 def start(self, context):
-    print("START", self.start)
     op = bpy.types.Scene.soundtool_op
     is_valid = op is not None
     if is_valid:
@@ -32,11 +36,12 @@ class SPEAKER_OT_GUI(Operator):
     end = FloatProperty(default=5500.0)
 
     def execute(self, context):
+        SOUND_MT_Music_Notes.bl_label = "XXX"
+        return {'FINISHED'}
         op = bpy.types.Scene.soundtool_op
         is_valid = op is not None
         if is_valid:
             note = note_from_freq(self.start)
-            print(note)
             op.minf = self.start
         return {'FINISHED'}
 
@@ -52,8 +57,12 @@ class SOUND_MT_Music_Notes(Menu):
             name = notes[note % 12]
             if name == "C":
                 octave += 1  # Go up an octave
+                row = layout.row()
+                row.separator()
+                row = layout.row()
+                row.label("%dth Octave" % octave, icon='SOUND')
             freq = 27.5 * 2 ** (note / 12.0)
-            name = "%s%d (%.2f)" % (name, octave, freq)
+            name = "%4s  (%5.2fHz)" % (name, freq)
             layout.operator("speaker.gui", text=name).start = freq
 
 
@@ -144,6 +153,7 @@ class AddPresetSoundToolOperator(AddPresetBase, Operator):
         type = op.type
         return os.path.join('operator', 'speaker.visualise', type)
 
+
 def note_items():
     octave = 0
     note_list = []
@@ -156,28 +166,58 @@ def note_items():
         #name = "%s%d (%.2f)" % (name, octave, freq)
         name = "%s%d" % (name, octave)
         note_list.append((name, name, "%.4f" % freq))
-        print(note, name, freq)
     return note_list
 
-def shownote(self, context):
-    name = "%s" % self.note[0: -1]
-    global notes
 
+def freq_ranges(a, b):
+    m = note_items()
+    l = [n for n, n, f in m]
+    a = l.index(a)
+    b = l.index(b)
+
+    r = [(float(f), float(f))
+         for n, (c, c, f) in enumerate(m)
+         if n >= a and n <= b]
+
+    return r
+
+
+def shownote(self, context):
+    '''
+    if self.bl_rna.name == "BakeOptions":
+        print("BAKEOPTIONS")
+    '''
+    if self.sound_type != 'MUSIC':
+        return None
+    l = note_items()
+    s = [(n, k) for n, (i, j, k) in enumerate(l) if i == self.music_start_note]
+    a = s[0][0]
+    s = [(n, k) for n, (i, j, k) in enumerate(l) if i == self.music_end_note]
+    b = s[0][0]
+
+    m = b - a + 1
+
+    if m < 1:
+        self.music_end_note = self.music_start_note
+        m = 1
+    self.channels = m
+
+    return None
+    global notes
     idx = notes.index(name)
 
+    octave = int(self.music_start_note[-1:])
 
-    octave = int(self.note[-1:])
     if idx > 2:
-        octave = max(0, octave-1)
+        octave = max(0, octave - 1)
 
     note = octave * 12 + idx
 
     freq = 27.5 * 2 ** (note / 12.0)
-    print(name, octave, idx, note, freq)
 
 notes_enum = EnumProperty(name="notelist", items=note_items(), default="A4",
                      update=shownote)
-bpy.types.Scene.note = notes_enum
+
 
 def register():
     bpy.utils.register_class(SOUND_MT_Music_Notes)

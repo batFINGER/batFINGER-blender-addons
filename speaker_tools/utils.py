@@ -1,12 +1,74 @@
-import bpy
-import re
-from mathutils import Vector, Color, Euler, Quaternion
-
 # <pep8-80 compliant>
+import bpy
+from bpy.props import *
+import re
+from mathutils import Matrix, Vector, Color, Euler, Quaternion
+from math import floor
+import itertools
+import sys
+
+from speaker_tools.presets import note_from_freq
 
 bpy_collections = ["scenes", "objects", "meshes", "materials", "textures",
         "speakers", "worlds", "curves", "armatures", "particles", "lattices",
-        "shape_keys", "lamps", "cameras"]
+        "shape_keys", "lamps", "cameras", "node_groups"]
+icons = {'SCENE_DATA': ["scenes", "Scene"],
+         'OBJECT_DATA': ["objects", "Object"],
+         'MESH_DATA': ["meshes"],
+         'OUTLINER_OB_MESH': ["MESH"],
+         'MATERIAL': ["materials"],
+         'MATERIAL_DATA': ["Material"],
+         'OUTLINER_OB_SURFACE': ["SURFACE"],
+         'TEXTURE': ["textures", "CLOUDS", "Clouds Texture"],
+         'SPEAKER': ["speakers"],
+         'OUTLINER_OB_SPEAKER': ["SPEAKER"],
+         'WORLD': ["worlds", "World"],
+         'OUTLINER_OB_CURVE': ["curves"],
+         'OUTLINER_OB_ARMATURE': ["armatures", "Armature", "ARMATURE"],
+         'PARTICLES': ["particles", "EMITTER"],
+         'OUTLINER_OB_LATTICE': ["lattices", "LATTICE"],
+         'OUTLINER_DATA_LATTICE': ["Lattice"],
+         'SHAPEKEY_DATA': ["shape_keys"],
+         'OUTLINER_OB_META': ["metaballs"],
+         'META_DATA': ["MetaBall", "META"],
+         'SURFACE_DATA': ["Surface Curve"],
+         'LAMP': ["lamps"],
+         'OUTLINER_OB_CAMERA': ["CAMERA"],
+         'OUTLINER_OB_FONT': ["FONT"],
+         'FONT_DATA': ["Text Curve"],
+         'OUTLINER_OB_EMPTY': ["EMPTY"],
+         'OUTLINER_OB_LAMP': ["LAMP"],
+         'NODETREE': ["node_groups", "NODETREE", "Compositor Node Tree"],
+         'NODE': ["NODE"],
+         'SEQUENCE': ["SEQUENCE"],
+         'LAMP_SUN': ["SUN"],
+         'LAMP_SPOT': ["SPOT"],
+         'LAMP_HEMI': ["HEMI"],
+         'LAMP_POINT': ["POINT"],
+         'LAMP_AREA': ["AREA"],
+         'CAMERA_DATA': ["cameras"]}
+
+
+def splittime(secs, prec=2):
+        t = float(secs)
+        minutes = t // 60
+        t %= 60
+        seconds = floor(t)
+        t = round(t - seconds, prec)
+        p = 10 ** prec
+        fraction = floor(p * (t))
+        return (minutes, seconds, fraction % p)
+
+
+def get_icon(desc):
+    choices = [icon_name for icon_name, usage_list in icons.items()
+               if desc in usage_list]
+    if(len(choices)):
+        return choices[0]
+    else:
+        #print("No icon for", desc)
+        pass
+    return 'QUESTION'
 
 
 def format_data_path(row, path, icon_only=False, padding=0):
@@ -26,6 +88,8 @@ def format_data_path(row, path, icon_only=False, padding=0):
              ('CONSTRAINT', r'constraints\[(\S+)\]\.(\S+)'),
              ('SHAPEKEY_DATA', r'key_blocks\[(\S+)\]\.(\S+)'),
              ('COLOR', r'color'),
+             ('NODE', r'nodes(\S+).(\S+)'),
+             ('SEQUENCE', r'sequence_editor(\S+).(\S+)'),
               ]
     path = rep_spaces(path)
     for icon, regexp in rexps:
@@ -34,57 +98,43 @@ def format_data_path(row, path, icon_only=False, padding=0):
         # Material match
         if m is not None:
             padding -= 1
-            col = row.column()
-            col.alignment = 'LEFT'
             if not icon_only:
                 if len(m.groups()):
                     name = "[%s]" % rep_spaces(m.groups()[0], True)
                 else:
                     name = "[%s]" % path
-            col.label(icon=icon, text=name)
-            if len(m.groups()):
+            row.label(icon=icon, text=name)
+            if len(m.groups()) > 1:
                 path = m.groups()[1]
 
     if not icon_only:
-        col = row.column()
-        col.alignment = 'RIGHT'
-        col.label(rep_spaces(path, True))
+        #col.alignment = 'RIGHT'
+        row.label(rep_spaces(path, True))
     if padding > 0:
         for i in range(padding):
-            bcol = row.column()
-            bcol.alignment = 'LEFT'
-            bcol.label(icon='BLANK1')
+            row.label(icon='BLANK1')
 
 
 def icon_from_bpy_datapath(path):
-    icons = ['SCENE', 'OBJECT_DATA', 'MESH', 'MATERIAL', 'TEXTURE', 'SPEAKER',
-            'WORLD', 'CURVE', 'ARMATURE', 'PARTICLES', 'LATTICE_DATA',
+    icons = ['SCENE', 'OBJECT_DATA', 'MESH', 'MATERIAL',
+            'TEXTURE', 'SPEAKER',
+            'WORLD', 'OUTLINER_OB_CURVE', 'OUTLINER_OB_ARMATURE',
+            'PARTICLES', 'LATTICE_DATA',
             'SHAPEKEY_DATA', 'LAMP', 'CAMERA_DATA']
 
     sp = path.split(".")
     col = sp[2].split('[')[0]
     #collection name will be index
+    if col not in bpy_collections\
+           or bpy_collections.index(col) >= len(icons):
+        return 'BLANK1'
+
     return  icons[bpy_collections.index(col)]
 
 
-def create_drivers_list(drivers_list={}, filter="", output_to_file=False):
-
-    def driver_key(driver):
-        context = bpy.context  # don't like doing this ...pass context
-        return "%s%s" % (driver.data_path, driver.array_index)
-
-    for col in bpy_collections:
-        collection = eval("bpy.data.%s" % col)
-        for ob in collection:
-            if ob.animation_data is not None:
-                drivers = [driver for driver in ob.animation_data.drivers]
-                if len(drivers) > 0:
-                    drivers.sort(key=driver_key)
-                    drivers_list[repr(ob)] = drivers
-    return drivers_list
-
-
 def getAction(speaker, search=False):
+    if not speaker:
+        return None
     action = None
     if speaker.animation_data:
         action = speaker.animation_data.action
@@ -99,22 +149,65 @@ def getAction(speaker, search=False):
 #FRAME change method to make the equalizer update live to panel
 
 
-def getSpeaker(context):
+def getSpeaker(context, action=None):
     space = context.space_data
+    '''
+    print(space.type)
+    if space.type == 'VIEW_3D':
+        print(dir(space))
+        print(dir(context.area))
+        print("xxxxxxxxx")
+        print(context.region.type, dir(context.region))
+        for r in context.area.regions:
+            print("===========")
+            print(r.type, dir(r))
+    '''
+    if action is not None:
+        for s in context.scene.soundspeakers:
+            if s.animation_data.action == action\
+               or action in [st.action
+                        for t in s.animation_data.nla_tracks
+                        for st in t]:
+
+                return s
     if space.type == 'PROPERTIES':
-        if space.use_pin_id:
+        if space.use_pin_id and space.pin_id.rna_type.identifier == 'Speaker':
             return space.pin_id
-        else:
-            if context.object is not None and context.object.type == 'SPEAKER':
-                return context.object.data
+
+        if(context.active_object is not None
+                and context.active_object.type == 'SPEAKER'):
+            return context.active_object.data
+    return None
+    '''
     # otherwise return the context speaker.
-    return bpy.app.driver_namespace["context_speaker"]
+    s = context.scene.speaker
+    if s is not None and "invalid" not in repr(s):
+        return s
+
+    # move to dm.
+    #context.scene.speaker = None
+    return None
+    '''
 
 
-def get_driver_settings(fcurve, speaker):
+def strip_expression(exp, fname):
+    def args(clist, **kwargs):
+        return(clist, ["%s=%s" % (name, str(value))
+                       for (name, value) in kwargs.items()])
+    if not exp.startswith(fname):
+        return [], []
+    pe = exp[exp.find('[') + 1: exp.find(']')]
+
+    sexp = exp.replace("[%s]" % pe, str(pe.split(",")))
+
+    return eval(sexp.replace(fname, "args"))
+
+
+def get_driver_settings_xxx(fcurve):
     reg_exps = [r'SoundDrive\(\[(\S+) \]\,(\S+)\)', r'SoundDrive\(\[(\S+)\]\)',
                 r'SoundDrive\((\S+)\)']
-    expression = fcurve.driver.expression.replace(" ", "")  # replace the
+    expression = fcurve.driver.expression
+    return strip_expression(expression, "SoundDrive")
 
     match = False
     for i, regex in enumerate(reg_exps):
@@ -154,15 +247,88 @@ def get_driver_settings(fcurve, speaker):
     return var_channels, args
 
 
+def get_channel_index(channel_name):
+    channel_name = channel_name.strip('"[').strip(']"')
+    ch = [''.join(x[1])\
+          for x in itertools.groupby(channel_name, lambda x: x.isalpha())]
+    return ch[0], int(ch[1])
+
+
+def get_driver_settings(fcurve):
+    s = fcurve.driver.expression
+    d = s.find("SoundDrive")
+    if d > -1:
+        m = s.find(")", d) + 1
+        sdexpr = s[d:m][:]
+        fmt = s.replace(sdexpr, "%s")
+        s = sdexpr
+    else:
+        fmt = "%s"
+    if not s.startswith("SoundDrive"):
+        return([], [])
+    # strip out whitespace
+    s = re.sub(r'\s', '', s)
+
+    driver_f = s[0:s.find('(')]
+
+    s = s.strip("%s(" % driver_f)
+    s = s[0:-1]
+
+    # strip out channel_list
+
+    pe = s[1:s.find(']')]
+
+    channels = pe.split(",")
+    d = [("==", "EQ"),
+         (">=", "GTE"),
+         ("<=", "LTE"),
+         ("<", "LT"),
+         (">", "GT")]
+    #kwargs
+    s = s.strip("[%s]" % pe)
+    s = s.strip(",")
+    for c, r in d:
+        s = s.replace(c, r)
+    kwargs = s.split(",")
+    if kwargs == ['']:
+        kwargs = []
+    l = [a.split("=") for a in kwargs]
+
+    return channels, kwargs
+
+
+def driver_expr(expr, channels, args):
+    #make a new driver expression from the channels and args
+    s = expr
+    ctxt = str(channels).replace("'", "").replace(" ", "")
+    x = s.find("SoundDrive")
+    if x > -1:
+        m = s.find(")", x) + 1
+        fmt = s.replace(s[x:m], "%s")
+    else:
+        fmt = "%s"
+    new_expr = 'SoundDrive(%s' % (ctxt)
+    for arg in args:
+        new_expr = '%s,%s' % (new_expr, arg)
+    new_expr = "%s)" % new_expr
+    new_expr = new_expr.replace('[,', '[')  # no channels fecks things up
+    return fmt % new_expr
+
+
 def driver_filter_draw(layout, context):
     scene = context.scene
+    if scene is None:
+        return None
     object = context.object
+    if object is None:
+        return None
     drivers = False
     if object.animation_data and len(object.animation_data.drivers):
         drivers = True
     settings = scene.speaker_tool_settings
     row = layout.row(align=True)
-    row.label("FILTER", icon='FILTER')
+    row.prop(settings, "use_filter", text="", icon="FILTER", toggle=True)
+    row.label("FILTER")
     if not drivers and settings.filter_context:
         row.template_ID(context.scene.objects, 'active')
     else:
@@ -183,146 +349,300 @@ def driver_filter_draw(layout, context):
             text="")
 
 
-def AllDriversPanel(box, context):
+def f(freq):
+    #output a format in Hz or kHz
+    if freq < 1000:
+        return("%dHz" % freq)
+    elif freq < 1000000:
+        khz = freq / 1000
+        return("%.2fkHz" % khz)
+    return(" ")
 
-    def driver_icon(fcurve):
-        driver = fcurve.driver
-        if len(driver.variables) == 1 \
-                and driver.variables[0].name == "var" \
-                and driver.variables[0].targets[0].id is None:
-            return 'MONKEY'
-        return 'DRIVER'
 
-    #row.template_ID(context.scene.objects,'active')
-    scene = context.scene
-    settings = scene.speaker_tool_settings
-    box.scale_y = box.scale_x = 0.8
-    driver_filter_draw(box, context)
-    xlist = {}
-    olist = {}
-    xlist = create_drivers_list(xlist)
-    i = 0
-    #print("*" * 30)
-    for xx in xlist:
-        row = box.row()
-        if xx.startswith("bpy.data.objects") and not settings.filter_object:
-            i += len(xlist[xx])
-            continue
-        elif xx.startswith("bpy.data.materials") and not settings.filter_material:
-            i += len(xlist[xx])
-            continue
+def set_channel_idprop_rna(channel,
+                           speaker_rna,
+                           low,
+                           high,
+                           fc_range,
+                           map_range,
+                           is_music=False):
+    #speaker_rna : saved on the action action min and max
+    min_, max_ = min(fc_range), max(fc_range)
+    map_min, map_max = min(map_range), max(map_range)
 
-        obj = eval(xx)
-        #print(obj.name, obj, xx)
+    # set the channel UI properties
+    if is_music:
+        desc = "%s (%s) (min:%.2f, max:%.2f)" %\
+                    (note_from_freq(low), f(low), min_, max_)
+    else:
+        desc = "Frequency %s to %s (min:%.2f, max:%.2f)" %\
+                    (f(low),  f(high), min_, max_)
+    speaker_rna[channel] = {"min": map_min,
+                            "max": map_max,
+                            "soft_min": map_min,
+                            "soft_max": map_max,
+                            "description": desc,
+                            "low": low,
+                            "high": high,
+                            "a": min_,
+                            "b": max_}
 
-        if  context.scene.objects.active == obj:
-            row.template_ID(context.scene.objects, 'active')
-        else:
-            if settings.filter_context and xx.startswith("bpy.data.objects"):
-                i += len(xlist[xx])
-                continue
-            row.label(text="", icon=icon_from_bpy_datapath(xx))
-            row.prop(obj, "name", text="")
-        k = len(xlist[xx])
-        for driver in xlist[xx]:
-            icon = driver_icon(driver)
-            if not icon.startswith("MONKEY") and settings.filter_monkey:
-                k -= 1
-                i += 1
-                if not k:
-                    row = box.row()
-                    row.label("No Items matching Filter")
-                continue
+    return None
+# utility function to remove all handlers by their string function name
 
-            can_edit = True
-            row = box.row(align=True)
-            #row.scale_y = row.scale_x = 0.8
-            #row = box.row()
-            infocol = row.column()
-            infocol = infocol.row()
-            infocol.alignment = 'LEFT'
-            infocol.prop(driver.driver, "is_valid", text="",
-                         icon=icon)
-            propcol = row.row()
-            propcol = propcol.row(align=True)
-            format_data_path(propcol, driver.data_path, True, padding=2)
-            buttoncol = row.column(align=False)
-            buttoncol.alignment = 'RIGHT'
-            row.alert = driver.driver.is_valid
 
-            sp = driver.data_path.split(".")
-            prop = sp[-1]
-            path = driver.data_path.replace("%s" % prop, "")
-            bpy_data_path = "%s.%s" % (xx, path)
-            if bpy_data_path[-1] == '.':
-                bpy_data_path = bpy_data_path[:-1]
-            try:
-                do = eval(bpy_data_path)
-                mo = do.path_resolve(prop)
-            except:
-                do = None
-                mo = None
+def remove_handlers_by_prefix(prefix):
+    handlers = bpy.app.handlers
+    my_handlers = [getattr(handlers, name)
+                   for name in dir(handlers)
+                   if isinstance(getattr(handlers, name), list)]
 
-            if do is None:
-                propcol.label(text="BAD PATH", icon="ERROR")
-                can_edit = False
+    for h in my_handlers:
+        fs = [f for f in h if callable(f) and f.__name__.startswith(prefix)]
+        for f in fs:
+            h.remove(f)
 
-            elif isinstance(mo, Vector):
-                axis = "XYZ"[driver.array_index]
-                text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop, text=text,
-                             index=driver.array_index, slider=True)
 
-            elif isinstance(mo, Euler):
-                axis = mo.order[driver.array_index]
-                text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop,
-                             text=text,
-                             index=driver.array_index,
-                             slider=True)
+def selected_bbox(context):
+    fmin = -sys.float_info.max
+    fmax = sys.float_info.max
+    sel = context.selected_objects
 
-            elif isinstance(mo, Quaternion):
-                axis = "WXYZ"[driver.array_index]
-                text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop,
-                             text=text,
-                             index=driver.array_index,
-                             slider=True)
+    if sel:
+        bbox = [fmax, fmin, fmax, fmin, fmax, fmin]
+        for ob in sel:
+            mat = Matrix(ob.matrix_world)
+            ob_bbox = ob.bound_box
+            for k in range(0, 8):
+                v = Vector(ob_bbox[k])
+                v = mat * v
+                bbox[0] = min(bbox[0], v[0])
+                bbox[1] = max(bbox[1], v[0])
+                bbox[2] = min(bbox[2], v[1])
+                bbox[3] = max(bbox[3], v[1])
+                bbox[4] = min(bbox[4], v[2])
+                bbox[5] = max(bbox[5], v[2])
+    else:
+        bbox = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    return bbox
 
-            elif isinstance(mo, Color):
-                rgb = "RGB"[driver.array_index]
-                text = "%s %s" % (rgb, do.bl_rna.properties[prop].name)
-                propcol.prop(do, prop,
-                             text=text,
-                             index=driver.array_index,
-                             slider=True)
 
-            elif type(mo).__name__ == "bpy_prop_array":
-                if prop == "color":
-                    axis = "RGBA"[driver.array_index]
-                    txt = "%s %s" % (axis, do.bl_rna.properties[prop].name)
-                    propcol.prop(do, prop,
-                                 text=txt,
-                                 index=driver.array_index,
-                                 slider=True)
+def bbdim(b):
+    bl = Vector((b[0], b[2], b[4]))
+    tr = Vector((b[1], b[3], b[5]))
+    v = tr - bl
+    m = max(v)
+    if m < 0.00001:
+        m = 1
+    for axis, val in enumerate(v):
+        if abs(val) < 0.00001:
+            v[axis] = m
+    return v
+
+
+def hasparent(obj, parent):
+    while obj.parent:
+        if obj.parent == parent:
+            return True
+        obj = obj.parent
+    return False
+
+
+
+def copy_sound_action(speaker, newname):
+    '''
+    Copy a sound action
+    replace datapaths on speaker and action with new channel_name
+    '''
+    spk = speaker
+    original_action = getAction(spk)
+    action = original_action.copy()
+
+    #spk.animation_data.action = action
+    #action.name = 'FX'
+    cn = action['channel_name']
+    action["channel_name"] = newname
+
+    channels = action['Channels']
+
+    for fcurve in action.fcurves:
+        dp = fcurve.data_path
+        fcurve.data_path = dp.replace(cn, newname)
+
+    action["rna"] = original_action["rna"].replace(cn, newname)
+    # make new properties for the speaker.
+    for i in range(channels):
+        opn = "%s%d" % (cn, i)
+        pn = "%s%d" % (newname, i)
+        spk[pn] = spk[opn]
+        oprop = spk['_RNA_UI'].get(opn)
+        if oprop:
+            ui_props = spk['_RNA_UI'].get(pn)
+            if not ui_props:
+                spk['_RNA_UI'][pn] = {}
+            for k, v in oprop.items():
+                if type(v) is float:
+                    v = round(v, 4)
+                spk['_RNA_UI'][pn][k] = v
+                #ui_props[k] = v
+    return action
+
+
+def nla_drop(obj, action, frame, name, multi=False):
+    if not multi:
+        #check if there is already a strip with this action
+        tracks = [s for t in obj.animation_data.nla_tracks
+                  for s in t.strips
+                  if s.action == action]
+        if len(tracks):
+            return None
+    #add nla track (name) with action at frame
+    nla_track = obj.animation_data.nla_tracks.new()
+    strip = nla_track.strips.new(name, frame, action)
+
+
+def validate_channel_name(context):
+    '''
+    return valid channel name
+    '''
+    chstr = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    speaker = getSpeaker(context)
+    sound = speaker.sound
+    channel_name = sound.bakeoptions.channel_name
+
+    flag = channel_name[0] in chstr\
+           and (channel_name.isalpha())\
+           and len(channel_name) == 2\
+           and channel_name not in speaker.channels
+    return flag
+
+
+def unique_name(channels, ch, j=1):
+    '''
+    Return a unique 2 character name
+    '''
+    #leaving in O & I
+    chstr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    #removed numeric character, channel name A0 channel 0 => A00 yuck.
+    #chstr = chstr if not j else "%s%s" % ("0123456789", chstr)
+
+    gidx = chstr.find(ch[j])
+    if ch in channels:
+        for k in range(len(chstr)):
+            idx = chstr.find(ch[j])
+            idx = idx + 1
+            if idx >= len(chstr):
+                idx = 0
+
+            if j:
+                ch = "%c%c" % (ch[0], chstr[idx])
             else:
-                propcol.prop(do, prop, index=driver.array_index, slider=True)
+                ch = "%c%c" % (chstr[idx], ch[1])
+            if idx == 0:
+                j = 0
+            else:
+                j = 1
+            return unique_name(channels, ch, j=j)
+    return ch
 
-            split = buttoncol.split(align=True)
 
-            split.alignment = 'RIGHT'
-            split.operator("speaker.add_driver_channel",
-                               icon="ZOOMOUT", text="").delete_index = i
-            split.operator("speaker.add_driver_channel",
-                               icon="FCURVE", text="").fcurve_index = i
-            row = split.row(align=True)
-            row.enabled = can_edit
-            row.alignment = 'RIGHT'
-            row.operator("speaker.add_driver_channel",
-                               text="EDIT").driver_index = i
-            i += 1
+def propfromtype(propdict, op):
+    def default_array(p):
+        return [v for v in p]
 
-    row = box.row()
-    driver_index = bpy.types.SoundVisualiserPanel.driver_index
-    #row.enabled = False  # SINGLE
-    # SINGLE will support multiple copyable drivers one for now.
+    ''' return a bpy.props.XxxProp from a bpy.types.XxxProp'''
+
+    for key, p in op.bl_rna.properties.items():
+        if key.startswith("filter_") or key in ["bl_rna"]:
+            continue
+        if hasattr(p, "options") and 'SKIP_SAVE' in getattr(p, "options"):
+            continue
+
+        prop_type = p.rna_type.identifier
+        f = getattr(bpy.props, prop_type)
+
+        if prop_type.startswith("String"):
+            propdict[key] = f(name=getattr(p, "name"),
+                            description=getattr(p, "description"),
+                            default=getattr(p, "default"))
+
+        if isinstance(p, bpy.types.IntProperty):
+            propdict[key] = IntProperty(name=getattr(p, "name"),
+                            description=getattr(p, "description"),
+                            min=getattr(p, "hard_min"),
+                            soft_min=getattr(p, "soft_min"),
+                            max=getattr(p, "hard_max"),
+                            soft_max=getattr(p, "soft_max"),
+
+                            default=getattr(p, "default"))
+
+        if prop_type.startswith("Float"):
+            if getattr(p, "array_length", 0) > 1:
+                default = default_array(getattr(p, "default_array"))
+                f = FloatVectorProperty
+                propdict[key] = f(name=getattr(p, "name"),
+                                description=getattr(p, "description"),
+                                min=getattr(p, "hard_min"),
+                                soft_min=getattr(p, "soft_min"),
+                                max=getattr(p, "hard_max"),
+                                soft_max=getattr(p, "soft_max"),
+                                subtype=getattr(p, 'subtype'),
+                                size=getattr(p, "array_length"),
+                                default=default)
+            else:
+                default = getattr(p, "default")
+                propdict[key] = f(name=getattr(p, "name"),
+                                description=getattr(p, "description"),
+                                min=getattr(p, "hard_min"),
+                                soft_min=getattr(p, "soft_min"),
+                                max=getattr(p, "hard_max"),
+                                soft_max=getattr(p, "soft_max"),
+                                subtype=getattr(p, 'subtype'),
+                                default=default)
+
+        if prop_type.startswith("Bool"):
+            if getattr(p, "array_length", 0) > 1:
+                default = default_array(getattr(p, "default_array"))
+                f = BoolVectorProperty
+                subtype = getattr(p, 'subtype')
+                if subtype == 'LAYER_MEMBERSHIP':
+                    subtype = 'LAYER'
+
+                propdict[key] = f(name=getattr(p, "name"),
+                        description=getattr(p, "description"),
+                        default=default,
+                        size=getattr(p, "array_length"),
+                        subtype=subtype)
+            else:
+                default = getattr(p, "default")
+                propdict[key] = f(name=getattr(p, "name"),
+                                description=getattr(p, "description"),
+                                default=getattr(p, "default"),
+                                )
+
+
+def get_context_area(context, context_dict, area_type='GRAPH_EDITOR',
+                     context_screen=False):
+    '''
+    context : the current context
+    context_dict : a context dictionary. Will update area, screen, scene, 
+                   area, region
+    area_type: the type of area to search for
+    context_screen: Boolean. If true only search in the context screen.
+    '''
+    if not context_screen:  # default
+        screens = bpy.data.screens
+    else:
+        screens = [context.screen]
+    for screen in screens:
+        for area_index, area in screen.areas.items():
+            if area.type == area_type:
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        context_dict["area"] = area
+                        context_dict["screen"] = screen
+                        context_dict["scene"] = context.scene
+                        context_dict["window"] = context.window
+                        context_dict["region"] = region
+                        return area
+    return None

@@ -24,16 +24,25 @@ bl_info = {
     "location": "Properties > Speaker > Toolshelf",
     "description": "Add Equaliser / Driver / Lipsync to speaker data",
     "warning": "Still in Testing",
-    "wiki_url": "",
-    "version": (0, 1),
-    "blender": (2, 6, 5),
+    "wiki_url": "http://wiki.blender.org/index.php/\
+                User:BatFINGER/Addons/Speaker_Tools",
+    "version": (1, 0),
+    "blender": (2, 6, 6),
     "tracker_url": "",
     "support": 'TESTING',
     "category": "Animation"}
 
+mods = ("sounddriver",
+        "speaker",
+        "sound",
+        "visualiser",
+        "Equalizer",
+        "EqMenu",
+        "NLALipsync",
+        "filter_playback",
+        "utils",
+        "presets")
 
-mods = ("Equalizer", "EqMenu", "NLALipsync",
-        "filter_playback", "utils", "presets")
 if "bpy" in locals():
     import imp
     for mod in mods:
@@ -46,9 +55,59 @@ else:
 
 
 import bpy
+from bpy.types import  AddonPreferences
+from bpy.props import StringProperty
+from bpy.utils import register_class, unregister_class
+
+
+class SpeakerToolsAddonPreferences(AddonPreferences):
+    ''' Speaker Tools User Prefs '''
+    bl_idname = "speaker_tools"
+
+    temp_folder = StringProperty(
+            name="Example File Path",
+            subtype='DIR_PATH',
+            )
+
+    def draw(self, context):
+        def icon(test):
+            if test:
+                icon = 'FILE_TICK'
+            else:
+                icon = 'ERROR'
+            return icon
+
+        layout = self.layout
+        # check that automatic scripts are enabled
+        UserPrefs = context.user_preferences
+        dns = bpy.app.driver_namespace
+        row = layout.row()
+        row.prop(UserPrefs.system, "use_scripts_auto_execute")
+
+        if not UserPrefs.system.use_scripts_auto_execute:
+            row = layout.row()
+            row.label("Warning Will not work unless Auto Scripts Enabled",
+                      icon='ERROR')
+        row = layout.row()
+        row.label("SoundDrive in Driver Namespace", icon=icon("SoundDrive" in
+                                                              dns))
+        row = layout.row()
+        row.label("GetLocals in Driver Namespace", icon=icon("GetLocals" in
+                                                              dns))
+        test = "DriverManager" in dns
+        row = layout.row()
+        row.label("DriverManager Started", icon=icon(test))
+        if not test:
+            row = layout.row()
+            row.operator("drivermanager.update")
 
 
 def register():
+    register_class(SpeakerToolsAddonPreferences)
+    sounddriver.register()
+    speaker.register()
+    sound.register()
+    visualiser.register()
     Equalizer.register()
     EqMenu.register()
     NLALipsync.register()
@@ -57,7 +116,13 @@ def register():
 
 
 def unregister():
+    unregister_class(SpeakerToolsAddonPreferences)
+    sounddriver.unregister()
+    speaker.unregister()
+    sound.unregister()
+    visualiser.unregister()
     Equalizer.unregister()
     EqMenu.unregister()
     NLALipsync.unregister()
     presets.unregister()
+    filter_playback.register()

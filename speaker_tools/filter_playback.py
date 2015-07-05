@@ -11,6 +11,7 @@ DBG = False
 
 sound_buffer = {}
 
+
 def dprint(str):
     global DBG
     if DBG:
@@ -75,7 +76,9 @@ ps = bpy.app.driver_namespace['ST_play_speaker']
 bpy.app.driver_namespace["ST_handle"] = None
 bpy.app.driver_namespace["ST_buffer"] = None
 
-def ST__playback_status(scene):
+
+def ST__FT_playback_status(scene):
+    dprint("Play STATUS")
     context = bpy.context
     screen = context.screen
     device = aud.device()
@@ -90,7 +93,8 @@ def ST__playback_status(scene):
         return None
 
 
-def ST__filter_playback(scene):
+def ST__FT_filter_playback(scene):
+    dprint("filter playbakc")
     context = bpy.context
     screen = context.screen
     device = aud.device()
@@ -102,7 +106,7 @@ def ST__filter_playback(scene):
 
     if not screen.is_animation_playing:
         if handle:
-            print("PAUSE PAUSE PAUSE")
+            dprint("PAUSE PAUSE PAUSE")
             handle.pause()
         #device.stopAll()
         return None
@@ -127,11 +131,10 @@ def ST__filter_playback(scene):
         if cf == frame_start:
             device.lock()
             handle.pause()
-            handle.position = max(cf / fps, 0.0) #don't like negs
+            handle.position = max(cf / fps, 0.0)  # don't like negs
             if cf >= 0.0:
                 handle.resume()
             device.unlock()
-
 
         elif cf == frame_end:
             handle.pause()
@@ -142,10 +145,12 @@ def ST__filter_playback(scene):
             return None
 
         '''
+
+
 def mix_buffer(context):
-    print("mix BUff")
+    dprint("mix BUff")
     #make a buffer from the channel mix
-    # set up a buffer with the same dictionary structure as the 
+    # set up a buffer with the same dictionary structure as the
     device = aud.device()
     scene = context.scene
     fps = scene.render.fps / scene.render.fps_base
@@ -162,8 +167,12 @@ def mix_buffer(context):
     g = None
     for name, value in scene.sound_channels.items():
         mix = sound_buffer.get(name)
+        if mix is None:
+            continue
         speaker_name, action_name = name.split("__@__")
         speaker = bpy.data.speakers.get(speaker_name)
+        if not speaker:
+            continue
         action = getAction(speaker)
         if not speaker.filter_sound \
                or action_name != action.name:  # using the mute as a flag
@@ -176,7 +185,7 @@ def mix_buffer(context):
 
             for i in range(action["start"], action["end"]):
                 ch = "channel%02d" % i
-                if value.get(ch): #channel selected for mix
+                if value.get(ch):  # channel selected for mix
                     f = mix.get(ch)
                     if g:
                         #f = f.join(g) # join
@@ -184,28 +193,30 @@ def mix_buffer(context):
                     g = f
 
     if g:
-        #factory_buffered = aud.Factory.buffer(g.limit((fs-1) / fps, (fe-1) / fps))
+        #factory_buffered =
+        #aud.Factory.buffer(g.limit((fs-1) / fps, (fe-1) / fps))
         bpy.app.driver_namespace["ST_buffer"] = g
         factory_buffered = aud.Factory.buffer(g)
-        print("buffered")
+        dprint("buffered")
         return factory_buffered
 
     return None
 
 
 def play_buffer(buffer):
-    print("Play BUff")
+    dprint("Play BUff")
     device = aud.device()
     if not buffer:
         return None
-    handle =  device.play(buffer)
+    handle = device.play(buffer)
     handle.keep = True
     bpy.app.driver_namespace["ST_handle"] = handle
     return handle
 
+
 def setup_buffer(context):
-    print("Setup BUffer")
-    # set up a buffer with the same dictionary structure as the 
+    dprint("Setup BUffer")
+    # set up a buffer with the same dictionary structure as the
     device = aud.device()
     scene = context.scene
     fps = scene.render.fps / scene.render.fps_base
@@ -223,20 +234,25 @@ def setup_buffer(context):
         mix = sound_buffer[name] = {}
         speaker_name, action_name = name.split("__@__")
         speaker = bpy.data.speakers.get(speaker_name)
+        if speaker is None:
+            continue
         action = getAction(speaker)
+        if action is None:
+            continue
         if not speaker.filter_sound \
                or action_name != action.name:  # using the mute as a flag
             continue
 
         channel_name = action["channel_name"]
+        rna_ui = speaker['_RNA_UI']
         fs = int(max(frame_start, action.frame_range.x))
         fe = min(frame_end, action.frame_range.y)
         if True:
 
             for i in range(action["start"], action["end"]):
                 if True:
-                    low = speaker['_RNA_UI']['%s%d' % (channel_name, i)]['low']
-                    high = speaker['_RNA_UI']['%s%d' % (channel_name, i)]['high']
+                    low = rna_ui['%s%d' % (channel_name, i)]['low']
+                    high = rna_ui['%s%d' % (channel_name, i)]['high']
                     f = speaker.sound.factory
                     #f = aud.Factory(speaker.sound.filepath)
                     f = f.lowpass(low).highpass(high).buffer()
@@ -246,9 +262,12 @@ def setup_buffer(context):
 
 # remove if there
 
+
 def remove_handlers_by_prefix(prefix):
     handlers = bpy.app.handlers
-    my_handlers = [getattr(handlers, name) for name in dir(handlers) if isinstance(getattr(handlers, name), list)]
+    my_handlers = [getattr(handlers, name)
+                   for name in dir(handlers)
+                   if isinstance(getattr(handlers, name), list)]
 
     for h in my_handlers:
         fs = [f for f in h if callable(f) and f.__name__.startswith(prefix)]
@@ -256,10 +275,7 @@ def remove_handlers_by_prefix(prefix):
             h.remove(f)
 
 
-remove_handlers_by_prefix('ST__')
-
-
-def ST__scrubber(scene):
+def ST__FT_scrubber(scene):
     frame = scene.frame_current
     fps = scene.render.fps
     if not frame % fps:
@@ -270,7 +286,16 @@ def ST__scrubber(scene):
         ps("Speaker", limit=[start_time, end_time])
 
 
-bpy.app.handlers.frame_change_post.append(ST__filter_playback)
-bpy.app.handlers.scene_update_post.append(ST__playback_status)
+def remove_filter_handlers():
+    remove_handlers_by_prefix('ST__FT_')
+
+
+def setup_filter_handlers():
+    remove_filter_handlers()
+    bpy.app.handlers.frame_change_post.append(ST__FT_filter_playback)
+    bpy.app.handlers.scene_update_post.append(ST__FT_playback_status)
+
+
 def register():
+    #setup_filter_handlers()
     bpy.app.driver_namespace["ST_setup_buffer"] = setup_buffer
