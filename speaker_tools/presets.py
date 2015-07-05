@@ -11,8 +11,9 @@ notes = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#']
 
 
 def note_from_freq(freq):
-    steps = round(12 * log(freq / 27.5, 2)) % 12
-    octave = (steps - 3) / 12
+    steps = round(12 * log(freq / 27.5, 2))
+    octave = max((steps + 9) // 12, 0)
+    steps = steps % 12
     note = notes[steps]
     return "%s%d" % (note, octave)
 

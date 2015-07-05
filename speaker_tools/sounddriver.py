@@ -490,7 +490,13 @@ class SoundDriver():
         layout.enabled = not node_input.is_linked
         #row.label(str(node_input.is_linked))
         val = node_input.path_resolve(value)
-        node_input.draw(context, layout, node, node_input.name)
+        #node_input.draw(context, layout, node, node_input.name)
+        fmt_str = "%s:%s"
+        if node_input.name.lower().startswith("color"):
+            fmt_str = "%%s: %c %%s" % "RGBA"[self.array_index]
+        name = fmt_str % (node.name, node_input.name)
+        layout.prop(node_input, "default_value", index=self.array_index,
+                    text=name)
         #node_input.draw(context, row, node, "")
         #node_input.draw(context, layout, node, self.text)
         #layout.template_node_socket(color=(0.0, 0.0, 1.0, 1.0))
@@ -719,8 +725,12 @@ class SoundDriver():
 
             target = varlist[0].targets[0]
             row = varbox.row()
+            row.alignment = 'LEFT'
             row.label("", icon_value=row.icon(target.id))
-            row.prop(target.id, "name", text="")
+            #row.prop(target.id, "name", text="")
+            row.label(target.id.name)
+            if target.data_path.startswith("node_tree"):
+                row.label("(node_tree)", icon='NODETREE')
 
             for var in varlist:
                 target = var.targets[0]
@@ -765,6 +775,22 @@ class SoundDriver():
                         if i > -1:
                             path = p
                             col2.prop(target.id, path, index=idx, slider=True)
+                        elif target.data_path.startswith("node_tree"):
+                            ntree = target.id.node_tree
+                            p = target.data_path.replace("node_tree.", "")
+                            p = p.replace(".default_value", "")
+                            i = p.find(".inputs")
+                            sp = p[:i]
+                            i = i + 1
+                            ps = p[i:]
+
+                            node = ntree.path_resolve(sp)
+                            input = node.path_resolve(ps)
+                            name = "%s:%s" % (node.name, input.name)
+                            col2.prop(input, "default_value", text=name,
+                                      icon='NODE')
+
+                            #col2.template_node_view(ntree, node, input)
                         else:
                             try:
                                 mo = target.id.path_resolve(target.data_path)
@@ -1240,7 +1266,15 @@ class DriverManager():
             #sub = row.row()
             row.prop(action, "name", text="")
 
+
+            row = layout.row(align=True)
+            row.prop(action, "normalise", expand=True)
+            sub = layout.row()
+            sub.enabled = action.normalise != 'NONE'
+            sub.prop(action, "normalise_range", text="", expand=True)
             '''
+
+            # Debug stuff
             row.enabled = False
             row.prop(edr.fcurve, "data_path", text="", icon="RNA")
             if edr.is_vector:
@@ -1365,7 +1399,7 @@ class DriverManager():
 
             elif space.context.startswith('MATERIAL'):
                 collection = "materials"
-                if obj.active_material is not None:
+                if hasattr(obj, "active_material") and obj.active_material is not None:
                     object = obj.active_material.name
                     obj = obj.active_material
                     self.check_added_drivers(obj)

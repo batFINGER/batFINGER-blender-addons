@@ -39,14 +39,13 @@ def InitSoundTools(dummy):
         for speaker in bpy.data.speakers:
             speaker.filter_sound = False
 
-    #speakers = [s for s in scene.objects if s.type == 'SPEAKER']
-# method to reinvigorate disabled drivers in file.
-
 
 def live_speaker_view(scene):
-    dns = bpy.app.driver_namespace
+    if len(scene.soundspeakers) == 0:
+        return None
     if scene is None:
         return None
+    dns = bpy.app.driver_namespace
     #scene = bpy.context.scene
     #print("Frame Change", scene.frame_current)
     frame = scene.frame_current
@@ -58,16 +57,15 @@ def live_speaker_view(scene):
     for area in bpy.context.screen.areas:
         if area.type == 'PROPERTIES':
             area.tag_redraw()
+
+        '''
         elif area.type == 'VIEW_3D' and dm and dm.edit_driver:
 
             # region 1 is tools
             # slows down too much
             area.regions[1].tag_redraw()
+        '''
     return None
-    '''
-    speakers = [speaker for speaker in bpy.data.speakers
-                if "Channel0" in speaker]
-    '''
 
 # DRIVER methods
 

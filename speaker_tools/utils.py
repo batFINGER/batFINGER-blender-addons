@@ -28,7 +28,7 @@ icons = {'SCENE_DATA': ["scenes", "Scene"],
          'PARTICLES': ["particles", "EMITTER"],
          'OUTLINER_OB_LATTICE': ["lattices", "LATTICE"],
          'OUTLINER_DATA_LATTICE': ["Lattice"],
-         'SHAPEKEY_DATA': ["shape_keys"],
+         'SHAPEKEY_DATA': ["shape_keys", "Key"],
          'OUTLINER_OB_META': ["metaballs"],
          'META_DATA': ["MetaBall", "META"],
          'SURFACE_DATA': ["Surface Curve"],
@@ -66,7 +66,7 @@ def get_icon(desc):
     if(len(choices)):
         return choices[0]
     else:
-        #print("No icon for", desc)
+        print("No icon for", desc)
         pass
     return 'QUESTION'
 
@@ -423,7 +423,7 @@ def selected_bbox(context):
                 bbox[4] = min(bbox[4], v[2])
                 bbox[5] = max(bbox[5], v[2])
     else:
-        bbox = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        bbox = (0.0, 1.0, 0.0, 1.0, 0.0, 1.0)
     return bbox
 
 
