@@ -9,14 +9,14 @@ import re
 from operator import attrgetter
 from bpy.app.handlers import persistent
 from bpy.props import StringProperty, PointerProperty, BoolProperty,\
-                      IntProperty, CollectionProperty, FloatProperty,\
-                      EnumProperty
+    IntProperty, CollectionProperty, FloatProperty,\
+    EnumProperty
 from bpy.types import PropertyGroup
 from speaker_tools.utils import format_data_path, driver_filter_draw,\
-                                getSpeaker, getAction, get_icon,\
-                                remove_handlers_by_prefix,\
-                                get_driver_settings,\
-                                driver_expr
+    getSpeaker, getAction, get_icon,\
+    remove_handlers_by_prefix,\
+    get_driver_settings,\
+    driver_expr
 
 from speaker_tools.EqMenu import main
 from speaker_tools import debug
@@ -35,7 +35,7 @@ def update_dm(self, context):
         dm.get_all_drivers_list()
 
 bpy.types.WindowManager.update_dm =\
-                BoolProperty(description="Refresh Driver List",
+    BoolProperty(description="Refresh Driver List",
                              update=update_dm)
 
 
@@ -68,7 +68,7 @@ def wonk(self, context):
             main(ed, context, sp, a, channel_list)
     elif self.rna_type.identifier.startswith('EditDriver'):
         channel_list = [ch.name for ch in ed.channels if
-                       ch.value and ch.name.startswith(cn)]
+                        ch.value and ch.name.startswith(cn)]
         main(self, context, sp, a, channel_list)
         # do amplify things etc
         pass
@@ -132,9 +132,9 @@ def SPEAKER_TOOLS_load(dummy):
 
     prop_dic = {}
     prop_dic["collection"] = StringProperty(default="",
-                             description="Driven Object Collection")
+                                            description="Driven Object Collection")
     prop_dic["object"] = StringProperty(default="",
-                                         description="Driven Object")
+                                        description="Driven Object")
     prop_dic["data_path"] = StringProperty(default="")
     prop_dic["array_index"] = IntProperty(default=0)
     prop_dic["channels"] = CollectionProperty(type=SoundDriverChannel)
@@ -151,13 +151,13 @@ def SPEAKER_TOOLS_load(dummy):
     prop_dic["amplify"] = amplify
     prop_dic["use_threshold"] = BoolProperty(default=False)
     threshold = FloatProperty(name="Threshold",
-                            default=0.0,
-                            min=0.0,
-                            max=1000,
-                            description="Only calculate when input is greater\
+                              default=0.0,
+                              min=0.0,
+                              max=1000,
+                              description="Only calculate when input is greater\
                               than threshold",
-                            update=wonk,
-                            soft_max=10.0)
+                              update=wonk,
+                              soft_max=10.0)
     prop_dic["threshold"] = threshold
     prop_dic["varname"] = StringProperty(default="",
                                          name="Driver Variable Name",
@@ -165,26 +165,26 @@ def SPEAKER_TOOLS_load(dummy):
     prop_dic["var_index"] = IntProperty(default=-1,
                                         name="Driver Variable Name")
     op = EnumProperty(items=(
-            ("sum", "SUM", "Sum Values"),
-            ("avg", "AVERAGE", "Average Value"),
-            ("min", "MIN", "Minimum Value"),
-            ("max", "MAX", "Maximum Value")
-            ),
-            name="Function",
-            default="avg",
-            description="Method for Channel List",
-            update=wonk,
-            )
+        ("sum", "SUM", "Sum Values"),
+        ("avg", "AVERAGE", "Average Value"),
+        ("min", "MIN", "Minimum Value"),
+        ("max", "MAX", "Maximum Value")
+    ),
+        name="Function",
+        default="avg",
+        description="Method for Channel List",
+        update=wonk,
+    )
 
     gui_type = EnumProperty(items=(
-            ("STD", "Standard", "Standard Interface", 'DRIVER', 0),
-            ("SPK", "SoundDriver", "Sound Driver", 'SOUND', 1)
-            ),
-            name="Choose Interface",
-            default="STD",
-            description="Driver GUI Type",
-            update=wonk,
-            )
+        ("STD", "Standard", "Standard Interface", 'DRIVER', 0),
+        ("SPK", "SoundDriver", "Sound Driver", 'SOUND', 1)
+    ),
+        name="Choose Interface",
+        default="STD",
+        description="Driver GUI Type",
+        update=wonk,
+    )
 
     prop_dic["gui_type"] = gui_type
     prop_dic["op"] = op
@@ -202,10 +202,10 @@ def SPEAKER_TOOLS_load(dummy):
                  "edit_drivers": CollectionProperty(type=EditDriver),
                  "use_filters": BoolProperty(default=False),
                  "material_driver_fix": BoolProperty(default=False,
-                                        name="Material Driver Fix",
-                                        update=toggle_driver_fix,
-                                        description="Live material drivers")
-                }
+                                                     name="Material Driver Fix",
+                                                     update=toggle_driver_fix,
+                                                     description="Live material drivers")
+                 }
 
     driver_gui = type('Driver_Gui', (PropertyGroup,), prop_dict)
     register_class(driver_gui)
@@ -213,7 +213,7 @@ def SPEAKER_TOOLS_load(dummy):
 
     # remove it for reload same file.
     # unload should be called from pre load handler
-    #SPEAKER_TOOLS_unload(dummy)
+    # SPEAKER_TOOLS_unload(dummy)
     print("Setting Up Driver Manager")
 
     dm = bpy.app.driver_namespace.get("DriverManager")
@@ -238,7 +238,7 @@ def SPEAKER_TOOLS_unload(dummy):
         print("PROBLEM UNLOADING DM")
         pass
 
-#this is ugly and needs fixing
+# this is ugly and needs fixing
 
 
 def mat_driver_fix(scene):
@@ -328,7 +328,7 @@ class SoundDriver():
     def _set_driven_object(self, obj):
         ''' set the driven object of driver '''
         if (self.is_node
-                and (self.collection_name == "scenes" 
+                and (self.collection_name == "scenes"
                      or self.collection_name == "lamps"
                      or self.collection_name == "materials"
                      or self.collection_name == "textures")
@@ -343,7 +343,7 @@ class SoundDriver():
                     txt = "%s.%s" % (self.fcurve.id_data, self.data_path)
                 elif self.is_node:
                     txt = 'bpy.data.node_groups["%s"]' %\
-                            (self.object_name)
+                        (self.object_name)
                     self.text = "NODEEEE"
 
             self._driven_object = txt
@@ -484,11 +484,11 @@ class SoundDriver():
         if length == 2:
             layout.prop(node, l[1])
             return None
-        #check for connector
+        # check for connector
 
         node_input = node.path_resolve(input_)
         layout.enabled = not node_input.is_linked
-        #row.label(str(node_input.is_linked))
+        # row.label(str(node_input.is_linked))
         val = node_input.path_resolve(value)
         #node_input.draw(context, layout, node, node_input.name)
         fmt_str = "%s:%s"
@@ -511,9 +511,9 @@ class SoundDriver():
             return(self.draw_error(layout))
 
         layout.prop(do, self.prop,
-                     text=self.text,
-                     index=self.fcurve.array_index,
-                     slider=True)
+                    text=self.text,
+                    index=self.fcurve.array_index,
+                    slider=True)
 
     def baking_draw(self, layout, scale_y=1.0):
         d = self
@@ -539,13 +539,14 @@ class SoundDriver():
                 split.prop(d.fcurve.id_data, d.data_path, slider=True, text="")
 
         split.prop(dm._edit_driver_gui, "value", slider=True,
-                           text="")
+                   text="")
         '''
         row = layout.row()
         sub = row.row()
         sub.alignment = 'LEFT'
         row.label("%3.0f%%" % (d.bake_pc * 100), icon='BLANK1')
         '''
+
     def __init__(self, driver, collection_name,
                  object_name, data_path, array_index):
         scene_name = None
@@ -566,7 +567,7 @@ class SoundDriver():
 
         rna_type = driver.id_data.rna_type
         self.is_material = data_path.startswith("materials")\
-                           or rna_type.identifier.startswith("Material")
+            or rna_type.identifier.startswith("Material")
         self.is_texture = data_path.startswith("textures")
         #driver_fcurve = self.fcurve
         driver_fcurve = driver
@@ -597,7 +598,7 @@ class SoundDriver():
         else:
             bpy_data_path = "%s.%s" % (xx, path)
         # quick fix for nodes
-        #check for custom properties hack
+        # check for custom properties hack
         is_idprop = False
         if bpy_data_path[-1] == '.':
             bpy_data_path = bpy_data_path[:-1]
@@ -671,7 +672,7 @@ class SoundDriver():
                 text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
             else:
                 text = "%s[%d]" % (do.bl_rna.properties[prop].name,
-                                     array_index)
+                                   array_index)
             mo = mo[array_index]
 
         elif not self.is_node:
@@ -681,14 +682,12 @@ class SoundDriver():
             else:
                 text = "PROBLEM"
 
-
         self.driven_object = do
         self.default_value = repr(mo)
         self.is_vector = is_vector
         self.is_idprop = is_idprop
         self.prop = prop
         self.text = text
-
 
     def edit(self, layout):
         gui = self.gui
@@ -817,8 +816,8 @@ class SoundDriver():
                         col2.label(desc)
                     else:
                         op = row.operator("driver.edit",
-                                    text="Update Dependencies",
-                                    icon='FILE_REFRESH')
+                                          text="Update Dependencies",
+                                          icon='FILE_REFRESH')
                         op.dindex = self.index
                         op.update = True
                 else:
@@ -894,10 +893,10 @@ class SoundDriver():
 
     def inputs(self, layout):
         box = layout.box()
-        #inputs
+        # inputs
         for var in self.fcurve.driver.variables:
             row = box.row()
-            #row.label(var.name)
+            # row.label(var.name)
             target = var.targets[0]
             if target.id:
                 row.label(var.name)
@@ -956,7 +955,7 @@ class DriverManager():
         obj_fcurves = []
         if hasattr(obj, "animation_data") and obj.animation_data is not None:
             obj_fcurves = [d for d in obj.animation_data.drivers]
-            #check the object fcurves are in the fcurves coll
+            # check the object fcurves are in the fcurves coll
             for fc in obj_fcurves:
                 if fc not in fcurves:
                     self.get_all_drivers_list()
@@ -1013,19 +1012,19 @@ class DriverManager():
             scene = None
             for ob in collection:
                 if isinstance(ob, tuple):
-                    #it's a freaken node.. why not in bpy.data... grumble.
+                    # it's a freaken node.. why not in bpy.data... grumble.
                     colln = "%s.%s" % (repr(ob[0]), repr(ob[1]))
                     scene = ob[0]
                     ob = ob[1]
                 if (hasattr(ob, 'animation_data')
                         and ob.animation_data is not None):
-                    drivers = [d for d  in ob.animation_data.drivers]
+                    drivers = [d for d in ob.animation_data.drivers]
                     if not len(drivers):
                         continue
 
                     for d in drivers:
                         if d not in self._dels\
-                        and not d.data_path.startswith("driver_gui"):
+                                and not d.data_path.startswith("driver_gui"):
                             self.updates += 1
                             dp = d.data_path
                             ix = d.array_index
@@ -1039,11 +1038,11 @@ class DriverManager():
                             else:
                                 obname = ob.name
                             self._all_drivers_list.append(
-                                            SoundDriver(d,
-                                                        collname,
-                                                        obname,
-                                                        dp,
-                                                        ix))
+                                SoundDriver(d,
+                                            collname,
+                                            obname,
+                                            dp,
+                                            ix))
 
         return self._all_drivers_list
         '''
@@ -1058,7 +1057,7 @@ class DriverManager():
 
     def get_filter_dic(self):
         self._filterdic.clear()
-        #for d in self._all_drivers_list:
+        # for d in self._all_drivers_list:
         for d in self._all_drivers_list:
             coll = self._filterdic.setdefault(d.collection_name, {})
             obj = coll.setdefault(d.object_name, {})
@@ -1073,11 +1072,11 @@ class DriverManager():
         # mute all drivers
         for d in self._all_drivers_list:
             if (d.fcurve.driver.expression.startswith("SoundDrive")
-                or d.fcurve.driver.expression.startswith("GetLocals")):
-                    d.fcurve.driver.is_valid = False
+                    or d.fcurve.driver.expression.startswith("GetLocals")):
+                d.fcurve.driver.is_valid = False
         # clear the drivers list
         self._all_drivers_list = []
-        #del(bpy.app.driver_namespace['DriverManager'])
+        # del(bpy.app.driver_namespace['DriverManager'])
         #self = None
 
         return
@@ -1094,8 +1093,8 @@ class DriverManager():
             if d.fcurve is None:
                 continue
             if (d.fcurve.driver.expression.startswith("SoundDrive")
-                or d.fcurve.driver.expression.startswith("GetLocals")):
-                    d.fcurve.driver.is_valid = True
+                    or d.fcurve.driver.expression.startswith("GetLocals")):
+                d.fcurve.driver.is_valid = True
 
     def is_sound_driver(self, driver):
         if driver.driver.expression.startswith("SoundDrive"):
@@ -1114,7 +1113,7 @@ class DriverManager():
         layout = layout.layout
         layout.alignment = 'LEFT'
 
-        #layout.template_header(menus=True)
+        # layout.template_header(menus=True)
         layout.menu("drivermanager.tools_menu", text="", icon="MENU_PANEL")
         #layout.operator("driver_manager.settings", emboss=False)
         #row.menu("OBJECT_MT_custom_menu", text="Tools")
@@ -1150,11 +1149,11 @@ class DriverManager():
                     continue
                 if e.array_index != d.array_index:
                     continue
-                #if we are here we have it
+                # if we are here we have it
                 ed = e
                 break
 
-            #create a gui
+            # create a gui
             if ed is None:
                 ed = eds.add()
                 ed.collection = d.collection_name
@@ -1175,7 +1174,7 @@ class DriverManager():
             for arg in args:
                 k, v = arg.split("=")
                 if k in ed.bl_rna.properties.keys():
-                    #get the prop type
+                    # get the prop type
                     p = ed.bl_rna.properties.get(k)
                     if p.rna_type.identifier.startswith("FloatP"):
                         setattr(ed, k, float(v))
@@ -1205,7 +1204,7 @@ class DriverManager():
                             if dvar.targets[0].id == cs:
                                 channel.value = True
                             else:
-                                #variable there but with other speaker alert
+                                # variable there but with other speaker alert
                                 pass
                         else:
                             channel.value = False
@@ -1249,7 +1248,7 @@ class DriverManager():
         area = context.area
         space = context.space_data
 
-        #make a new gui for edit driver
+        # make a new gui for edit driver
         eds = scene.driver_gui.edit_drivers
         eds = [dm._edit_driver_gui]
         for ed in eds:
@@ -1265,7 +1264,6 @@ class DriverManager():
             sub.menu("soundtest.menu", text=channel_name)
             #sub = row.row()
             row.prop(action, "name", text="")
-
 
             row = layout.row(align=True)
             row.prop(action, "normalise", expand=True)
@@ -1314,7 +1312,7 @@ class DriverManager():
                 #col = cf.row()
                 col = row.column()
                 #col.scale_y = 0.5
-                #col.label(ch.name)
+                # col.label(ch.name)
                 col.prop(ch, 'value', text=str(i), toggle=True)
                 r = col.row()
                 r.scale_y = 0.4
@@ -1350,7 +1348,7 @@ class DriverManager():
             op.idx = mi
         else:
             op = row.operator("editdriver.add_modifier")
-            #op.type = 'GENERATOR' #  it's the default
+            # op.type = 'GENERATOR' #  it's the default
 
     def draw_spitter(self, context):
         self.check_deleted_drivers()
@@ -1399,7 +1397,8 @@ class DriverManager():
 
             elif space.context.startswith('MATERIAL'):
                 collection = "materials"
-                if hasattr(obj, "active_material") and obj.active_material is not None:
+                if hasattr(
+                        obj, "active_material") and obj.active_material is not None:
                     object = obj.active_material.name
                     obj = obj.active_material
                     self.check_added_drivers(obj)
@@ -1475,14 +1474,14 @@ class DriverManager():
                 sub.prop(wm, "update_dm", text="", icon='FILE_REFRESH')
                 row.label("NO FCurve Info", icon='INFO')
                 continue
-                #buggered
+                # buggered
             buttoncol = row.column(align=True)
             buttoncol.alignment = 'LEFT'
             col = row.column()
             edop = buttoncol.operator("driver.edit",
-                                emboss=False,
-                                icon='TRIA_RIGHT',
-                                text="")
+                                      emboss=False,
+                                      icon='TRIA_RIGHT',
+                                      text="")
 
             edop.toggle = True
             try:
@@ -1501,13 +1500,13 @@ class DriverManager():
 
                 if getattr(d, "gui", None) is not None:
                     leftcol.prop(d.gui, "gui_type",
-                               text="",
-                               expand=True,
-                               icon_only=True)
+                                 text="",
+                                 expand=True,
+                                 icon_only=True)
 
                 if d.is_monkey:
                     op = leftcol.operator("drivermanager.demonkify", text="",
-                                     icon='MONKEY')
+                                          icon='MONKEY')
                     op.driver_index = d.index
                 leftcol.operator("editdriver.bake2fcurves",
                                  text="", icon='FCURVE')
@@ -1583,7 +1582,7 @@ class DriverManager():
             drivers = [d for d in self._all_drivers_list
                        if d.is_node
                        and node_name(d.fcurve.data_path)
-                           == context.active_node.name]
+                       == context.active_node.name]
         else:
             '''
             drivers = [d for d in self._all_drivers_list
@@ -1591,7 +1590,7 @@ class DriverManager():
             '''
             drivers = [d for d in self._all_drivers_list
                        if (d.collection_name == collection
-                       and d.object_name == obj.name) 
+                           and d.object_name == obj.name)
                        or d.driven_object == obj]
 
         #print(len(drivers),  ob, obj)
@@ -1634,7 +1633,7 @@ class DriverManager():
             prop_mod = getattr(bl_ui, k)
             panels = [p for p in dir(prop_mod) if p.find("_PT_") > 1]
 
-        #panel_shutter()
+        # panel_shutter()
 
     def draw_filters(self, layout, context):
         layout = layout.layout
@@ -1648,7 +1647,7 @@ class DriverManager():
         sub.prop(wm, "update_dm", text="", icon='FILE_REFRESH')
         filterrow.prop(gui, "use_filters", text="", icon='FILTER', toggle=True)
 
-        #for key in self.get_driver_dict().keys():
+        # for key in self.get_driver_dict().keys():
         row = filterrow.row(align=True)
 
         row.enabled = gui.use_filters
@@ -1656,7 +1655,7 @@ class DriverManager():
             row.prop(filters, key, text="", icon=get_icon(key), toggle=True)
 
     def driver_draw(self, sounddriver, layout):
-        #move to isMonkey
+        # move to isMonkey
         def driver_icon(fcurve):
             driver = fcurve.driver
             if len(driver.variables) == 1 \
@@ -1688,10 +1687,10 @@ class DriverManager():
         colrow.alignment = 'LEFT'
         colrow.prop(driver, "color", text="", icon=icon)
         if sounddriver.is_node:
-            #quick hack need to pass context or refactor
+            # quick hack need to pass context or refactor
             sounddriver.draw_node_slider(row, bpy.context)
         else:
-            #sounddriver.
+            # sounddriver.
             if getattr(sounddriver, "edit_driver_baking", False):
                 sounddriver.baking_draw(row)
             else:
@@ -1719,7 +1718,7 @@ class AddDriverVar(Operator):
 
     def execute(self, context):
         dm = bpy.app.driver_namespace.get("DriverManager")
-        #check if var is in variables
+        # check if var is in variables
         name = "var"
         i = 1
         while name in dm.edit_driver.fcurve.driver.variables.keys():
@@ -1810,7 +1809,7 @@ class DriverSelectorOperator(Operator):
             return {'CANCELLED'}
         scene = context.scene
         eds = scene.driver_gui.edit_drivers
-        #dm.check_updates(context)
+        # dm.check_updates(context)
 
         driver = dm.all_drivers_list[self.dindex]
         is_open = getattr(driver, "is_open", False)
@@ -1914,7 +1913,7 @@ class Bake2FCurveOperator(bpy.types.Operator):
 
         #action = speaker.animation_data.action
 
-        #make an unbaked fcurve for the driver.
+        # make an unbaked fcurve for the driver.
         # check whether there is already an fcurve
 
         while frame <= frame_end:
@@ -1922,7 +1921,7 @@ class Bake2FCurveOperator(bpy.types.Operator):
             # quick fix try array, then without
             try:
                 driver.id_data.keyframe_insert(driver.data_path,
-                                           index=driver.array_index)
+                                               index=driver.array_index)
             except:
                 driver.id_data.keyframe_insert(driver.data_path)
                 print("Error in baking")
@@ -1959,7 +1958,7 @@ class Bake2FCurveOperator(bpy.types.Operator):
         return {'FINISHED'}
 
     def cancel(self, context):
-        #scene.frame_set(scene_frame)
+        # scene.frame_set(scene_frame)
         wm = context.window_manager
         wm.event_timer_remove(self._timer)
         print("Baking cancelled")
@@ -2030,7 +2029,7 @@ class RGBColorFCurves(Operator):
         for d in color_drivers:
             d.fcurve.color = (0, 0, 0)
             d.fcurve.color[d.array_index] = 1
-        #main(context)
+        # main(context)
         return {'FINISHED'}
 
 
@@ -2134,7 +2133,7 @@ class DriversManagerPanel(bpy.types.Panel):
 
             return
 
-        #dm.check_updates(context)
+        # dm.check_updates(context)
         row = box.row(align=True)
         if not len(dm._all_drivers_list):
             box.label("NO DRIVERS FOUND", icon='INFO')
@@ -2147,7 +2146,7 @@ class DriversManagerPanel(bpy.types.Panel):
         seq_header, node_header = False, False
         for collname, collection in drivers_dict.items():
             bpy_collection = getattr(bpy.data, collname)
-                #need to reorder for sequencer and nodes.
+            # need to reorder for sequencer and nodes.
             # check for filter FIXME
             if settings.use_filters:
                 if hasattr(settings.filters, collname):
@@ -2166,7 +2165,7 @@ class DriversManagerPanel(bpy.types.Panel):
                 if not obj:
                     # a missing ob should invoke a dm refresh
                     continue
-                #XXX code for context ...............................
+                # XXX code for context ...............................
                 _filter_context_object = True
                 if (collname == 'objects'
                         and _filter_context_object
@@ -2337,7 +2336,7 @@ Property Methods
 
 def driver_minmax(driver_fcurve):
     scene = bpy.context.scene
-    #get the minmax of the driver over playback range.
+    # get the minmax of the driver over playback range.
     '''
     THIS IS FAR TOO HEAVY TO RUN AS A PROPERTY
     o = driver.id_data
@@ -2359,7 +2358,7 @@ def driver_minmax(driver_fcurve):
 
 
 def fcurve_minmax(self):
-    #return ((min, max), (min_index, max_index))
+    # return ((min, max), (min_index, max_index))
     # it thru keyframe_points
     if len(self.keyframe_points):
         col = self.keyframe_points
@@ -2434,4 +2433,4 @@ def unregister():
     if dm is not None:
         dm.clear()
         print("Driver Manager Cleared")
-        #del(dm)
+        # del(dm)
