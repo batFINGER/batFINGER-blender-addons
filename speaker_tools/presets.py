@@ -2,7 +2,7 @@
 import bpy
 from bpy.utils import preset_find, preset_paths
 from bpy.types import Menu, Operator
-from bpy.props import FloatProperty
+from bpy.props import FloatProperty, EnumProperty
 from bl_operators.presets import AddPresetBase
 from math import log
 import os
@@ -144,6 +144,40 @@ class AddPresetSoundToolOperator(AddPresetBase, Operator):
         type = op.type
         return os.path.join('operator', 'speaker.visualise', type)
 
+def note_items():
+    octave = 0
+    note_list = []
+    for note in range(0, 88):
+        name = notes[note % 12]
+        if name == "C":
+            octave += 1  # Go up an octave
+        freq = 27.5 * 2 ** (note / 12.0)
+
+        #name = "%s%d (%.2f)" % (name, octave, freq)
+        name = "%s%d" % (name, octave)
+        note_list.append((name, name, "%.4f" % freq))
+        print(note, name, freq)
+    return note_list
+
+def shownote(self, context):
+    name = "%s" % self.note[0: -1]
+    global notes
+
+    idx = notes.index(name)
+
+
+    octave = int(self.note[-1:])
+    if idx > 2:
+        octave = max(0, octave-1)
+
+    note = octave * 12 + idx
+
+    freq = 27.5 * 2 ** (note / 12.0)
+    print(name, octave, idx, note, freq)
+
+notes_enum = EnumProperty(name="notelist", items=note_items(), default="A4",
+                     update=shownote)
+bpy.types.Scene.note = notes_enum
 
 def register():
     bpy.utils.register_class(SOUND_MT_Music_Notes)

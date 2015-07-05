@@ -137,17 +137,17 @@ def register():
     bpy.utils.register_class(OBJECT_OT_LoadLipSync)
     bpy.utils.register_class(SoundTools_LipSync_PT)
     #bpy.utils.register_class()
-    
+
 def unregister():
     bpy.utils.unregister_class(OBJECT_OT_LoadLipSync)
     bpy.utils.unregister_class(SoundTools_LipSync_PT)
 
+'''
 phonemes = ["AI","E","MBP","etc","rest","O","U","FV","WQ","L"]
 for p in phonemes:
     if p not in bpy.data.actions:
         action = bpy.data.actions.new(p)
         action["phoneme"] = p
         action["emphasis"] = 1
-        
-
+'''
 

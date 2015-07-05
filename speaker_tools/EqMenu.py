@@ -16,6 +16,8 @@ from speaker_tools.utils import \
         get_driver_settings, create_drivers_list, AllDriversPanel, \
         icon_from_bpy_datapath, format_data_path
 
+from speaker_tools.filter_playback import setup_buffer, play_buffer,\
+     mix_buffer, sound_buffer
 # <pep8-80 compliant>
 
 
@@ -111,7 +113,7 @@ def glipglip(self, context):
     if self.mode == 0:
         return None
     self.slider = self.mode
-    speaker = bpy.types.Scene.context_speaker
+    speaker = bpy.app.driver_namespace["context_speaker"]
     if speaker is None:
         return None
     '''
@@ -122,7 +124,7 @@ def glipglip(self, context):
     elif context.object.type == "SPEAKER":
         speaker = context.object.data
     else:
-        speaker = bpy.types.Scene.context_speaker
+        speaker = bpy.app.driver_namespace["context_speaker"]
     '''
     #self.channel = "Channel%d"%10
     action = getAction(speaker)
@@ -147,6 +149,20 @@ def glipglip(self, context):
 
 def speaker_filter_sound(self, context):
     self.muted = self.filter_sound
+    h = bpy.app.driver_namespace.get("ST_handle")
+    if not self.filter_sound:
+        if h and h.status:
+            print("Stopping")
+            h.stop()
+        return None
+
+    b = bpy.app.driver_namespace.get("ST_buffer")
+    if not b:
+        if setup_buffer(context):
+            b = bpy.app.driver_namespace["ST_buffer"] = mix_buffer(context)
+
+    if not h:
+        bpy.app.driver_namespace["ST_handle"] = play_buffer(b)
     return None
 
 
@@ -183,11 +199,14 @@ def filter_sound(self, context):
             frame_end = scene.frame_end
         fs = max(action.frame_range.x, frame_start)
         # have to go back to start to enable effect
-        scene.frame_set(fs)
+        #scene.frame_set(fs)
 
-        for i in range(92):
+        for i in range(96):
             glip = glips[i // 32]
-            setattr(sound_channel, "channel%02d" % i, glip[i % 32])
+            sw = glip[i % 32]
+            ch = "channel%02d" % i
+            if getattr(sound_channel, ch) != sw:
+                setattr(sound_channel, ch, sw)
 
 
 def sync_play(self, context):
@@ -280,7 +299,7 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
             self.contextspeakername = "None"
             return {'FINISHED'}
             #speaker = bpy.data.speakers[self.contextspeakername]
-            #bpy.types.Scene.context_speaker = speaker
+            #bpy.app.driver_namespace["context_speaker"] = speaker
 
         xlist = {}
         xlist = create_drivers_list(xlist)
@@ -520,6 +539,9 @@ class AddCustomSoundDriverToChannel(bpy.types.Operator):
         row = layout.row(align=True)
         row.prop(self, "sync_play", toggle=True, text="PLAY", icon="PLAY")
         row.prop(self, "filter_sound", toggle=True, icon="SPEAKER")
+        if bpy.app.driver_namespace.get("ST_buffer"):
+            row = layout.row()
+            row.label("BUFFERED", icon='INFO')
         row = layout.row(align=True)
         row.prop(scene, "use_preview_range", text="", toggle=True)
 
@@ -622,38 +644,11 @@ def setcontextspeaker(name):
     #global GLOBALdriverlist
     #GLOBALdriverlist = set([driver for xx in xlist for driver in xlist[xx]])
     speaker = bpy.data.speakers.get(name)
-    bpy.types.Scene.context_speaker = speaker
+    bpy.app.driver_namespace["context_speaker"] = speaker
 
-
-def overwriteviewdoc(enable):
-    try:
-        if enable:
-            bpy.utils.unregister_class(bpy.types.WM_OT_doc_view)
-            bpy.utils.register_class(SimpleOperator)
-        else:
-            bpy.utils.unregister_class(bpy.types.WM_OT_doc_view)
-            bpy.utils.register_class(WM_OT_doc_view)
-    except:
-        print("HUMFFF this is driving me nuts")
-
-
-def rightclickfudge(self, context):
-    on = self.rightclick == 'ON'
-    overwriteviewdoc(on)
 
 bpy.types.Scene.speaker_settings = BoolProperty(name="Speaker Tools Settings",
                                                default=False)
-bpy.types.Scene.rightclick = EnumProperty(items=(
-            ("OFF", "OFF", "Prop toolbox right click off"),
-            ("ON", "ON", "Overwrite view docs operator"),
-            ),
-            name="Right Click Fudge",
-            default="OFF",
-            description="Add speaker drivers from right click toolbox",
-            #update=overwriteviewdoc,
-            options={'HIDDEN'},
-            update=rightclickfudge
-            )
 
 
 class SoundToolPanel(bpy.types.Panel):
@@ -679,20 +674,11 @@ class SoundToolPanel(bpy.types.Panel):
         scene = context.scene
         if scene.speaker_settings:
             row = layout.row()
-            box = row.box()
-            row = box.row()
-            row.label(text="Right Click Override", icon="INFO")
-            row = box.row()
-            row.prop(scene, "rightclick", expand=True)
-            if scene.rightclick == 'ON':
-                box.label("Overriden Op")
-                box.label("View Online Python Reference")
-            row = layout.row()
             props = scene.speaker_tool_settings
             row.prop(props, "material_driver_fix", text="Material Driver Fix",
                     toggle=True, icon='MATERIAL_DATA')
         row = layout.row()
-        context_speaker = bpy.types.Scene.context_speaker
+        context_speaker = bpy.app.driver_namespace["context_speaker"]
         if context_speaker is not None:
             text = "%s (%s)" % (context_speaker.name,
                                 context_speaker.sound.name)

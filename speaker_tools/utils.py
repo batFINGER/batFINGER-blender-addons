@@ -108,7 +108,7 @@ def getSpeaker(context):
             if context.object is not None and context.object.type == 'SPEAKER':
                 return context.object.data
     # otherwise return the context speaker.
-    return bpy.types.Scene.context_speaker
+    return bpy.app.driver_namespace["context_speaker"]
 
 
 def get_driver_settings(fcurve, speaker):
@@ -156,13 +156,20 @@ def get_driver_settings(fcurve, speaker):
 
 def driver_filter_draw(layout, context):
     scene = context.scene
+    object = context.object
+    drivers = False
+    if object.animation_data and len(object.animation_data.drivers):
+        drivers = True
     settings = scene.speaker_tool_settings
     row = layout.row(align=True)
     row.label("FILTER", icon='FILTER')
-    row.prop(settings, "filter_object", icon='OBJECT_DATA', toggle=True,
+    if not drivers and settings.filter_context:
+        row.template_ID(context.scene.objects, 'active')
+    else:
+        row.prop(settings, "filter_object", icon='OBJECT_DATA', toggle=True,
             text="")
-    if settings.filter_object:
-        row.prop(settings, "filter_context", toggle=True,
+        if settings.filter_object:
+            row.prop(settings, "filter_context", toggle=True,
                 text="CONTEXT")
     row.prop(settings, "filter_world", icon='WORLD', toggle=True,
             text="")
@@ -195,7 +202,7 @@ def AllDriversPanel(box, context):
     olist = {}
     xlist = create_drivers_list(xlist)
     i = 0
-    print("*" * 30)
+    #print("*" * 30)
     for xx in xlist:
         row = box.row()
         if xx.startswith("bpy.data.objects") and not settings.filter_object:
@@ -206,8 +213,7 @@ def AllDriversPanel(box, context):
             continue
 
         obj = eval(xx)
-         
-        print(obj.name, obj, xx)
+        #print(obj.name, obj, xx)
 
         if  context.scene.objects.active == obj:
             row.template_ID(context.scene.objects, 'active')
@@ -217,10 +223,15 @@ def AllDriversPanel(box, context):
                 continue
             row.label(text="", icon=icon_from_bpy_datapath(xx))
             row.prop(obj, "name", text="")
+        k = len(xlist[xx])
         for driver in xlist[xx]:
             icon = driver_icon(driver)
             if not icon.startswith("MONKEY") and settings.filter_monkey:
+                k -= 1
                 i += 1
+                if not k:
+                    row = box.row()
+                    row.label("No Items matching Filter")
                 continue
 
             can_edit = True
@@ -310,56 +321,7 @@ def AllDriversPanel(box, context):
             row.operator("speaker.add_driver_channel",
                                text="EDIT").driver_index = i
             i += 1
-            '''
 
-            if xx.find("shape_keys") > 0:
-                if ".value" in driver.data_path:
-                    do = obj.path_resolve(driver.data_path.split('.value')[0])
-                    propcol.prop(do, 'value', slider=True,
-                                 index=driver.array_index)
-                else:
-                    sp = driver.data_path.split(".")
-                    prop = sp[-1]
-                    path = driver.data_path.replace(".%s" % prop, "")
-                    #print(prop)
-                    do = obj.path_resolve(path)
-                    propcol.prop(do, prop, index=driver.array_index)
-            elif driver.data_path.find("material_slots") == 0:
-                #print("material")
-                sp = driver.data_path.split(".")
-                prop = sp[-1]
-                path = driver.data_path.replace(".%s" % prop, "")
-                #print(prop)
-                do = obj.path_resolve(path)
-                l_col = propcol.column()
-                l_col.alignment = 'LEFT'
-                l_col = l_col.row()
-                l_col.label(text="",
-                        icon=icon_from_bpy_datapath("bpy.data.materials"))
-
-                if prop.find("color") != -1 \
-                        and driver.data_path.find('texture_slots') == -1:
-                    rgb = "RGB"
-                    l_col.label(text=rgb[driver.array_index])
-                    c_col = propcol.column()
-                    c_col = c_col.row()
-                    c_col.prop(do, prop, index=driver.array_index)
-                    r_col = propcol.column()
-                    r_col = r_col.row()
-                    r_col.alignment = 'RIGHT'
-                    r_col.prop(do, prop, text="")
-                else:
-                    propcol.prop(do, prop)
-            else:
-                propcol.prop(obj,
-                             driver.data_path,
-                             slider=True,
-                             index=driver.array_index)
-            buttoncol.operator("speaker.add_driver_channel",
-                               text="EDIT").driver_index = i
-            #row.label("%s %d %d" % (xx,driver.array_index,i))
-            row = box.row(align=True)
-            '''
     row = box.row()
     driver_index = bpy.types.SoundVisualiserPanel.driver_index
     #row.enabled = False  # SINGLE

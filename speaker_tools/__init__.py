@@ -26,7 +26,7 @@ bl_info = {
     "warning": "Still in Testing",
     "wiki_url": "",
     "version": (0, 1),
-    "blender": (2, 6, 4),
+    "blender": (2, 6, 5),
     "tracker_url": "",
     "support": 'TESTING',
     "category": "Animation"}
@@ -53,6 +53,7 @@ def register():
     EqMenu.register()
     NLALipsync.register()
     presets.register()
+    filter_playback.register()
 
 
 def unregister():
