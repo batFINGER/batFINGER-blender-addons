@@ -538,14 +538,8 @@ class SoundDriver():
             else:
                 split.prop(d.fcurve.id_data, d.data_path, slider=True, text="")
 
-        split.prop(dm._edit_driver_gui, "value", slider=True,
-                   text="")
-        '''
-        row = layout.row()
-        sub = row.row()
-        sub.alignment = 'LEFT'
-        row.label("%3.0f%%" % (d.bake_pc * 100), icon='BLANK1')
-        '''
+        split.prop(bpy.context.scene.driver_gui.edit_drivers[0], 'value', slider=True, text="")
+
 
     def __init__(self, driver, collection_name,
                  object_name, data_path, array_index):
@@ -1841,18 +1835,22 @@ class Bake2FCurveOperator(bpy.types.Operator):
     """(un)Bake Driver to Action"""
     bl_idname = "editdriver.bake2fcurves"
     bl_label = "Bake to FCurve"
+    selection = BoolProperty(default=False, options={'SKIP_SAVE'})
 
-    def get_driver(self):
+    def get_drivers(self):
         dns = bpy.app.driver_namespace
         dm = dns.get("DriverManager")
         if dm is None:
             return None
 
-        return dm.edit_driver
+        if self.selection:
+            return [d for d in dm.all_drivers_list]
+        return [dm.edit_driver]
 
     chunks = 50
     wait = 0
     driver = None
+    drivers = None
     _timer = None
     pc = 0
     _pc = 0  # where we're up to
@@ -1866,18 +1864,21 @@ class Bake2FCurveOperator(bpy.types.Operator):
     def modal(self, context, event):
         if event.type in {'RIGHTMOUSE', 'ESC'}:
             return self.cancel(context)
+
         if self.wait > 0:
             self.wait -= 1
             return {'PASS_THROUGH'}
 
-        if self.pc == self.chunks:
+        if self.pc >= self.chunks:
             return self.finished(context)
 
         if event.type == 'TIMER':
-            if self.bake(context):
-                self.f += self.bakeframes[self.pc]
-                self.pc += 1
-                self.wait = 5
+            for d in self.drivers:
+                self.driver = d
+                self.bake(context)
+            self.f += self.bakeframes[self.pc]
+            self.pc += 1
+            self.wait = 5
 
         return {'PASS_THROUGH'}
 
@@ -1885,8 +1886,8 @@ class Bake2FCurveOperator(bpy.types.Operator):
         # remove the fcurve if there is one and return finished.
         driver = self.driver.fcurve
         obj = driver.id_data
-        if obj.animation_data.action:
-            raction = driver.id_data.animation_data.action
+        if obj.animation_data.action is not None:
+            raction = obj.animation_data.action
             fcurves = [fcurve for fcurve in raction.fcurves
                        if fcurve.data_path == driver.data_path
                        and fcurve.array_index == driver.array_index]
@@ -1924,7 +1925,7 @@ class Bake2FCurveOperator(bpy.types.Operator):
                                                index=driver.array_index)
             except:
                 driver.id_data.keyframe_insert(driver.data_path)
-                print("Error in baking")
+                #print("Error in baking")
             finally:
                 frame = frame + 1
         return True
@@ -1932,9 +1933,20 @@ class Bake2FCurveOperator(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
 
-        self.driver = self.get_driver()
-        if self.remove(context):
+        self.drivers = self.get_drivers()
+        print(len(self.drivers))
+        r = []
+        for d in self.drivers:
+            self.driver = d
+            if self.remove(context):
+                print("REMOVE", d)
+                r.append(d)
+        for d in r:
+           self.drivers.remove(d)
+        print(len(self.drivers))
+        if not len(self.drivers):
             return {'FINISHED'}
+
         self.scene_frame = scene.frame_current
         self.f = scene.frame_start
         frames = scene.frame_end - scene.frame_start
@@ -1943,13 +1955,14 @@ class Bake2FCurveOperator(bpy.types.Operator):
         self.bakeframes = bakeframes
 
         wm = context.window_manager
-        self._timer = wm.event_timer_add(0.01, context.window)
+        self._timer = wm.event_timer_add(0.001, context.window)
         wm.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
     def finished(self, context):
-        delattr(self.driver, "edit_driver_baking")
-        delattr(self.driver, "bake_pc")
+        for d in self.drivers:
+            delattr(d, "edit_driver_baking")
+            delattr(d, "bake_pc")
         scene = context.scene
         scene.frame_set(self.scene_frame)
         wm = context.window_manager
@@ -2284,7 +2297,9 @@ class DriverMangagerToolMenu(bpy.types.Menu):
 
         layout.menu("speaker.select_contextspeaker", icon='SPEAKER')
         layout.menu("soundtest.menu", icon="ACTION")
-        layout.operator("dm.bake_selection", icon='FCURVE')
+
+        op = layout.operator("editdriver.bake2fcurves", icon='FCURVE', text="Bake All")
+        op.selection = True
         layout.operator("drivermanager.rgb_color_fcurves", icon='COLOR')
         layout.operator("drivermanager.demonkify", icon='MONKEY')
 

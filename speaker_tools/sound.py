@@ -1217,67 +1217,6 @@ def get_dm():
     return dm
 
 
-class DriverMangagerBakeSelection(bpy.types.Operator):
-    """Bake selected Drivers"""
-    bl_idname = "dm.bake_selection"
-    bl_label = "Bake Selection"
-    bl_options = {'REGISTER', 'UNDO'}
-    idx = 0
-    baked = []
-    _timer = None
-
-    def draw(self, context):
-        layout = self.layout
-        dm = get_dm()
-        if dm is None:
-            return
-        d = dm.edit_driver
-        if d is not None:
-            dm.edit_driver.baking_draw(layout, scale_y=0.3)
-
-    def modal(self, context, event):
-        dm = get_dm()
-        if hasattr(dm.edit_driver, "edit_driver_baking"):
-            return {'PASS_THROUGH'}
-
-        if self.idx == len(dm.all_drivers_list):
-            dm.edit_driver = None
-            return {'FINISHED'}
-
-        if event.type in {'ESC'}:
-            return self.cancel(context)
-
-        if self.idx not in self.baked:
-            self.baked.append(self.idx)
-            d = dm.edit_driver = dm.all_drivers_list[self.idx]
-            if context.area.type == 'PROPERTIES':
-                if d.is_modifier:
-                    context.space_data.context = 'MODIFIER'
-                elif d.is_material:
-                    context.space_data.context = 'MATERIAL'
-                elif d.is_constraint:
-                    context.space_data.context = 'CONSTRAINT'
-                else:
-                    context.space_data.context = 'OBJECT'
-            dm.set_edit_driver_gui(bpy.context, create=True)
-            x = bpy.ops.editdriver.bake2fcurves()
-            return {'PASS_THROUGH'}
-
-        self.idx += 1
-        return {'PASS_THROUGH'}
-
-    def execute(self, context):
-        self.idx = 0
-        self.baked = []
-        wm = context.window_manager
-        self._timer = wm.event_timer_add(0.1, context.window)
-        wm.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
-
-    def cancel(self, context):
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
-
 
 def register():
     bakeop = bpy.types.GRAPH_OT_sound_bake
@@ -1361,7 +1300,6 @@ def register():
     bpy.utils.register_class(ChangeSoundAction)
     bpy.utils.register_class(CopySoundAction)
     bpy.utils.register_class(BakeSoundAction)
-    bpy.utils.register_class(DriverMangagerBakeSelection)
     bpy.utils.register_class(VisualiserOptions)
 
     bpy.types.Sound.bakeoptions = PointerProperty(type=bakeoptions)
@@ -1378,7 +1316,6 @@ def unregister():
     bpy.utils.unregister_class(SoundVisMenu)
     bpy.utils.unregister_class(ChangeSoundAction)
     bpy.utils.unregister_class(BakeSoundAction)
-    bpy.utils.unregister_class(DriverMangagerBakeSelection)
     bpy.utils.unregister_class(SoundPanel)
     bpy.utils.unregister_class(SoundVisualiserPanel)
     bpy.utils.unregister_class(VisualiserOptions)
