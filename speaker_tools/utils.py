@@ -151,17 +151,6 @@ def getAction(speaker, search=False):
 
 def getSpeaker(context, action=None):
     space = context.space_data
-    '''
-    print(space.type)
-    if space.type == 'VIEW_3D':
-        print(dir(space))
-        print(dir(context.area))
-        print("xxxxxxxxx")
-        print(context.region.type, dir(context.region))
-        for r in context.area.regions:
-            print("===========")
-            print(r.type, dir(r))
-    '''
     if action is not None:
         for s in context.scene.soundspeakers:
             if s.animation_data.action == action\
@@ -178,16 +167,6 @@ def getSpeaker(context, action=None):
                 and context.active_object.type == 'SPEAKER'):
             return context.active_object.data
     return None
-    '''
-    # otherwise return the context speaker.
-    s = context.scene.speaker
-    if s is not None and "invalid" not in repr(s):
-        return s
-
-    # move to dm.
-    #context.scene.speaker = None
-    return None
-    '''
 
 
 def strip_expression(exp, fname):

@@ -469,6 +469,8 @@ class SoundActionPanel(SoundActionMethods, Panel):
         row = layout.row(align=True)
         self.drawnormalise(context)
         self.copy_action(context)
+        row = layout.row()
+        row.operator("soundaction.unbake")
 
 
 class SoundNLAPanel(SoundActionMethods, Panel):
@@ -787,19 +789,6 @@ class ChangeSoundAction(Operator):
             speaker.animation_data.action = soundaction
             action_normalise_set(soundaction, context)
 
-            # MARKED FOR DELETION
-            '''
-            if False and  "rna" in soundaction.keys():
-                rna = soundaction["rna"]
-                action_rna = eval(rna)
-                for key, value in action_rna.items():
-                    speaker["_RNA_UI"][key] = value
-                # change the sound if the action doesn't
-                # have same as speaker
-                if speaker.sound.name != soundaction['wavfile']:
-                    speaker.sound = bpy.data.sounds[soundaction['wavfile']]
-            '''
-
         dm = bpy.app.driver_namespace['DriverManager']
         if dm is not None:
             dm.set_edit_driver_gui(context)
@@ -834,6 +823,45 @@ class CopySoundAction(bpy.types.Operator):
             return {'FINISHED'}
 
         return {'CANCELLED'}
+
+
+class UnbakeSoundAction(Operator):
+    bl_idname = 'soundaction.unbake'
+    bl_label = 'unBake to Action'
+    bl_description = 'Resample baked f-curve to a new Action / f-curve'
+    bl_options = {'UNDO'}
+
+
+    @classmethod
+    def poll(cls, context):
+        return getSpeaker(context) is not None
+
+
+    def execute(self, context):
+        obj = context.object.data
+        old_action = obj.animation_data.action
+        name = old_action.name
+
+        pts = [(c.sampled_points, c.data_path, c.array_index) for c in obj.animation_data.action.fcurves if c.sampled_points]
+        if pts:
+            keys = old_action.copy()
+            for f in keys.fcurves:
+                keys.fcurves.remove(f)
+            for sam, dat, ind in pts:
+                fcu = keys.fcurves.new(data_path=dat, index=ind)
+                
+                fcu.keyframe_points.add(len(sam))
+                for i in range(len(sam)):
+                    w = fcu.keyframe_points[i]
+                    w.co = w.handle_left = w.handle_right = sam[i].co
+            obj.animation_data.action = keys
+            # replace in nla
+            strips = [s for t in obj.animation_data.nla_tracks for s in t.strips if s.action == old_action]
+            for s in strips:
+                s.action = keys
+            bpy.data.actions.remove(old_action)
+            keys.name = name
+        return{'FINISHED'}
 
 
 class BakeSoundAction(Operator):
@@ -949,6 +977,7 @@ class BakeSoundAction(Operator):
             t0 = time.clock()
             try:
                 #x = bpy.ops.graph.sound_bake(
+
                 x = bpy.ops.graph.sound_bake(self.c,
                              filepath=fp,
                              low=low,
@@ -1300,6 +1329,7 @@ def register():
     bpy.utils.register_class(ChangeSoundAction)
     bpy.utils.register_class(CopySoundAction)
     bpy.utils.register_class(BakeSoundAction)
+    bpy.utils.register_class(UnbakeSoundAction)
     bpy.utils.register_class(VisualiserOptions)
 
     bpy.types.Sound.bakeoptions = PointerProperty(type=bakeoptions)
@@ -1316,6 +1346,7 @@ def unregister():
     bpy.utils.unregister_class(SoundVisMenu)
     bpy.utils.unregister_class(ChangeSoundAction)
     bpy.utils.unregister_class(BakeSoundAction)
+    bpy.utils.unregister_class(UnbakeSoundAction)
     bpy.utils.unregister_class(SoundPanel)
     bpy.utils.unregister_class(SoundVisualiserPanel)
     bpy.utils.unregister_class(VisualiserOptions)
