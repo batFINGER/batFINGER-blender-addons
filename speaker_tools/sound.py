@@ -891,6 +891,9 @@ class BakeSoundAction(Operator):
 
     @classmethod
     def poll(cls, context):
+        
+        if context.space_data.pin_id is not None and context.space_data.pin_id != context.scene.objects.active.data:
+            return False
         return validate_channel_name(context)
 
     def channel_range(self):
@@ -991,6 +994,11 @@ class BakeSoundAction(Operator):
                              sthreshold=bake_operator.sthreshold)
             except:
                 print("ERROR IN BAKE OP")
+                '''
+                for k in self.c.keys():
+                    print(k, ":", self.c[k])
+
+                '''
                 return self.cancel(context)
 
             if self.graph:
@@ -1076,14 +1084,13 @@ class BakeSoundAction(Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
+        self.speaker = bpy.data.speakers.get(self.speaker_name)
         self.c = context.copy()
         self.first_baked = False
         self.last_baked = False
         self.sound = bpy.data.sounds.get(self.sound_name)
-        self.speaker = bpy.data.speakers.get(self.speaker_name)
         if not (self.sound and self.speaker):
             return {'CANCELLED'}
-
         bakeoptions = self.sound.bakeoptions
         self.retries = []
 
