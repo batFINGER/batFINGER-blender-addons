@@ -19,10 +19,10 @@
 
 
 bl_info = {
-    "name": "Speaker Tools",
+    "name": "Sound Drivers",
     "author": "batFINGER",
     "location": "Properties > Speaker > Toolshelf",
-    "description": "Add Equaliser / Driver / Lipsync to speaker data",
+    "description": "Drive Animations with baked sound files",
     "warning": "Still in Testing",
     "wiki_url": "http://wiki.blender.org/index.php/\
                 User:BatFINGER/Addons/Sound_Drivers",
