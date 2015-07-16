@@ -568,14 +568,9 @@ class BakeSoundPanel(BakeSoundGUIPanel, Panel):
         space = context.space_data
         layout = self.layout
 
-        if space.use_pin_id:
-            speaker = space.pin_id
-            # check not pinned in speaker context.
-            if hasattr(speaker, "type"):
-                speaker = speaker.data
-        else:
-            speaker = context.object.data
+        speaker = getSpeaker(context)
         sound = speaker.sound
+
         if sound is None:
             row = layout.row()
             row.label("No Sound to Bake", icon='INFO')
