@@ -7,17 +7,17 @@ from bpy.types import PropertyGroup
 
 from math import log, sqrt
 from mathutils import Vector, Color
-from speaker_tools.NLALipsync import SoundTools_LipSync_PT
-from speaker_tools.presets import AddPresetSoundToolOperator
+from sound_drivers.NLALipsync import SoundTools_LipSync_PT
+from sound_drivers.presets import AddPresetSoundToolOperator
 from bl_ui.properties_data_speaker  import DATA_PT_context_speaker, \
                 DATA_PT_speaker, DATA_PT_cone, DATA_PT_distance, \
                 DATA_PT_custom_props_speaker
 
-from speaker_tools.utils import get_driver_settings,\
+from sound_drivers.utils import get_driver_settings,\
                 icon_from_bpy_datapath, getSpeaker, getAction,\
                 set_channel_idprop_rna, f, get_channel_index
 
-from speaker_tools.filter_playback import setup_buffer, play_buffer,\
+from sound_drivers.filter_playback import setup_buffer, play_buffer,\
                 mix_buffer
 # add drivers to the namespace
 
@@ -258,7 +258,7 @@ def test(self, context):
 
 
 class DriverMenu(bpy.types.Menu):
-    bl_idname = "speaker_tools.driver_menu"
+    bl_idname = "sound_drivers.driver_menu"
     bl_label = "Select a Driver"
 
     def draw(self, context):
@@ -322,7 +322,7 @@ def showFilterBox(layout, context, speaker, action):
 
         sound_channel_id = "%s__@__%s" % (speaker.name, action.name)
         sound_item = None
-        from speaker_tools.filter_playback import  sound_buffer
+        from sound_drivers.filter_playback import  sound_buffer
         if sound_buffer:
             sound_item = sound_buffer.get(sound_channel_id)
         filter_item = scene.sound_channels.get(sound_channel_id)

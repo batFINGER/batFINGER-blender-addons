@@ -25,9 +25,9 @@ bl_info = {
     "description": "Add Equaliser / Driver / Lipsync to speaker data",
     "warning": "Still in Testing",
     "wiki_url": "http://wiki.blender.org/index.php/\
-                User:BatFINGER/Addons/Speaker_Tools",
-    "version": (1, 0),
-    "blender": (2, 6, 6),
+                User:BatFINGER/Addons/Sound_Drivers",
+    "version": (1, 1),
+    "blender": (2, 7, 5),
     "tracker_url": "",
     "support": 'TESTING',
     "category": "Animation"}
@@ -62,7 +62,7 @@ from bpy.utils import register_class, unregister_class
 
 class SpeakerToolsAddonPreferences(AddonPreferences):
     ''' Speaker Tools User Prefs '''
-    bl_idname = "speaker_tools"
+    bl_idname = "sound_drivers"
 
     temp_folder = StringProperty(
             name="Example File Path",

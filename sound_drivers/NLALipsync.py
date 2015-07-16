@@ -9,7 +9,7 @@ might extend this to have an offset frame set
 import bpy
 import os
 
-from speaker_tools.utils import getAction
+from sound_drivers.utils import getAction
 
 
 def boob(self, context):

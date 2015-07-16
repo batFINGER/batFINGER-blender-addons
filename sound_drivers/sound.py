@@ -5,16 +5,16 @@ from bpy.props import *
 from math import log, sqrt
 from mathutils import Vector
 
-from speaker_tools.Equalizer import showFilterBox, action_normalise_set
+from sound_drivers.Equalizer import showFilterBox, action_normalise_set
 
-from speaker_tools.utils import get_driver_settings,\
+from sound_drivers.utils import get_driver_settings,\
                 icon_from_bpy_datapath, getSpeaker, getAction,\
                 set_channel_idprop_rna, f, propfromtype,\
                 get_channel_index, copy_sound_action, nla_drop,\
                 validate_channel_name, unique_name, splittime,\
                 get_context_area
 
-from speaker_tools.presets import notes_enum, note_from_freq,\
+from sound_drivers.presets import notes_enum, note_from_freq,\
                 freq_ranges, shownote
 
 

@@ -9,14 +9,14 @@ from bpy.props import \
 
 from bl_operators.wm import WM_OT_doc_view
 
-from speaker_tools.Equalizer import \
+from sound_drivers.Equalizer import \
          getAction, getSpeaker, SoundActionMenuRow
 
-from speaker_tools.utils import \
+from sound_drivers.utils import \
         get_driver_settings, \
         icon_from_bpy_datapath, format_data_path
 
-from speaker_tools.filter_playback import setup_buffer, play_buffer,\
+from sound_drivers.filter_playback import setup_buffer, play_buffer,\
      mix_buffer, sound_buffer, remove_filter_handlers, setup_filter_handlers
 # <pep8-80 compliant>
 

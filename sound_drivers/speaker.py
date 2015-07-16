@@ -11,7 +11,7 @@ from bpy.types import Panel, Operator
 from bpy.utils import register_class, unregister_class
 from bpy_extras import object_utils
 
-from speaker_tools.utils import get_driver_settings, propfromtype,\
+from sound_drivers.utils import get_driver_settings, propfromtype,\
                 icon_from_bpy_datapath, getSpeaker, getAction,\
                 set_channel_idprop_rna, f, get_context_area
 

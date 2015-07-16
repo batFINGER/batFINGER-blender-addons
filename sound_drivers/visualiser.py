@@ -4,7 +4,7 @@ from bpy.props import *
 from bpy.types import PropertyGroup, Operator, Panel
 from bpy.utils import unregister_class, register_class
 from mathutils import Vector
-from speaker_tools.utils import bbdim, hasparent, selected_bbox,\
+from sound_drivers.utils import bbdim, hasparent, selected_bbox,\
                                 get_driver_settings, getAction,\
                                 driver_expr
 from math import sqrt

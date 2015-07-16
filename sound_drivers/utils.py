@@ -7,7 +7,7 @@ from math import floor
 import itertools
 import sys
 
-from speaker_tools.presets import note_from_freq
+from sound_drivers.presets import note_from_freq
 
 bpy_collections = ["scenes", "objects", "meshes", "materials", "textures",
         "speakers", "worlds", "curves", "armatures", "particles", "lattices",

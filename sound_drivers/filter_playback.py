@@ -3,7 +3,7 @@ import bpy
 import aud
 
 from bpy.props import BoolProperty
-from speaker_tools.utils import getAction
+from sound_drivers.utils import getAction
 
 bpy.types.Speaker.play_speaker = BoolProperty(default=False)
 

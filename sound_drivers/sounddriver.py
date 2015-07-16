@@ -12,14 +12,14 @@ from bpy.props import StringProperty, PointerProperty, BoolProperty,\
     IntProperty, CollectionProperty, FloatProperty,\
     EnumProperty
 from bpy.types import PropertyGroup
-from speaker_tools.utils import format_data_path, driver_filter_draw,\
+from sound_drivers.utils import format_data_path, driver_filter_draw,\
     getSpeaker, getAction, get_icon,\
     remove_handlers_by_prefix,\
     get_driver_settings,\
     driver_expr
 
-from speaker_tools.EqMenu import main
-from speaker_tools import debug
+from sound_drivers.EqMenu import main
+from sound_drivers import debug
 #dm = None
 
 '''
@@ -100,8 +100,8 @@ def set_var_index(self, context):
 
 
 @persistent
-def SPEAKER_TOOLS_load(dummy):
-    debug.print("SPEAKER_TOOLS_load")
+def SOUND_DRIVERS_load(dummy):
+    debug.print("SOUND_DRIVERS_load")
     BPY_COLLECTION_TYPE = type(bpy.data.objects)
     prop_dict = {}
 
@@ -213,7 +213,7 @@ def SPEAKER_TOOLS_load(dummy):
 
     # remove it for reload same file.
     # unload should be called from pre load handler
-    # SPEAKER_TOOLS_unload(dummy)
+    # SOUND_DRIVERS_unload(dummy)
     print("Setting Up Driver Manager")
 
     dm = bpy.app.driver_namespace.get("DriverManager")
@@ -225,7 +225,7 @@ def SPEAKER_TOOLS_load(dummy):
 
 
 @persistent
-def SPEAKER_TOOLS_unload(dummy):
+def SOUND_DRIVERS_unload(dummy):
     debug.print("SPEAER_TOOLS_unload")
 
     try:
@@ -1767,7 +1767,7 @@ class UpdateDriverlistOperator(Operator):
     def execute(self, context):
         dm = bpy.app.driver_namespace.get("DriverManager")
         if not dm:
-            SPEAKER_TOOLS_load(context.scene)
+            SOUND_DRIVERS_load(context.scene)
         '''
         else:
             # update the driver list.
@@ -2417,9 +2417,9 @@ def register():
     register_class(RGBColorFCurves)
 
     # get rid of any handlers floating around.
-    remove_handlers_by_prefix('SPEAKER_TOOLS_')
-    bpy.app.handlers.load_post.append(SPEAKER_TOOLS_load)
-    bpy.app.handlers.load_pre.append(SPEAKER_TOOLS_unload)
+    remove_handlers_by_prefix('SOUND_DRIVERS_')
+    bpy.app.handlers.load_post.append(SOUND_DRIVERS_load)
+    bpy.app.handlers.load_pre.append(SOUND_DRIVERS_unload)
 
     # set up the driver manager
     #bpy.app.driver_namespace["DriverManager"] = None
@@ -2441,7 +2441,7 @@ def unregister():
     unregister_class(DriverAddModifier)
     unregister_class(DriverRemoveModifier)
     # We don't want these hanging around.
-    remove_handlers_by_prefix('SPEAKER_TOOLS_')
+    remove_handlers_by_prefix('SOUND_DRIVERS_')
 
     #global dm
     dm = bpy.app.driver_namespace.get("DriverManager")
