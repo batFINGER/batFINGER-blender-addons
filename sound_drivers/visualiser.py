@@ -74,6 +74,35 @@ def CurveVis(context, action, use_radius=False, frame_scale=1.0, d=1):
     holder.select = True
 
 
+def rechannel_visualiser(handle, context, from_channel, to_channel):
+    #select all the underlings
+    print("RECHANNEL TEST", from_channel, to_channel)
+    select_visualiser(handle, context)
+
+
+    dns = bpy.app.driver_namespace
+    dm = dns.get("DriverManager")
+    print(len(context.selected_objects))
+    drivers_list = [d for d in dm.all_drivers_list if d.driven_object.id_data in context.selected_objects]
+
+    print("driverslist", drivers_list)
+    for d in drivers_list:
+        expr = d.fcurve.driver.expression
+        d.fcurve.driver.expression = expr.replace(from_channel, to_channel)
+
+    var_list = [v for d in drivers_list for v in d.fcurve.driver.variables if v.name.startswith(from_channel)]
+    print([v.name for v in var_list])
+    '''
+    need to change var name
+    targets.datapath
+    driver.expression
+    '''
+    for v in var_list:
+        v.name = v.name.replace(from_channel, to_channel)
+        for t in v.targets:
+            t.data_path = t.data_path.replace(from_channel, to_channel)
+
+
 def retarget_visualiser(handle, context, from_target, to_target):
     #select all the underlings
     select_visualiser(handle, context)
@@ -125,6 +154,7 @@ def revert_visualiser(handle, context):
     bpy.ops.object.delete()
     for o in sel_objs:
         o.select = True
+    scene.objects.active = sel_objs[0]
 
 
 def delete_visualiser(handle, context):
@@ -141,7 +171,6 @@ def copy_visualiser(handle, context):
     for ob in context.selected_objects:
         if ob != context.active_object:
             ob.select = False
-    #print("COPY",context.active_object.name)
 
 
 class Visualiser:
@@ -163,27 +192,54 @@ class CreateSoundVisualiserPanel(Panel):
         # need an action to generate this kind from
         return sp is not None\
                 and getAction(sp) is not None\
-                and context.active_object is not None\
+                and context.object is not None\
 
+
+    def retarget_draw(self, ob, context):
+        handle = ob
+        rna = handle["_RNA_UI"]["VIS"].to_dict()
+        layout = self.layout
+
+        visualiser = context.scene.visualisers.grids.get(rna["name"])
+        row = layout.row()
+        row.prop(visualiser, "from_channel")
+        row.prop(visualiser, "to_channel")
+        row = layout.row()
+        row.prop(visualiser, "from_target")
+        row.prop(visualiser, "to_target")
+        op = layout.operator("visualiser.edit", text="ReChannel")
+        op.func = "rechannel"
+        op.from_channel = visualiser.from_channel
+        op.to_channel = visualiser.to_channel
 
     def curvesurface_draw(self, layout, context):
-        handle = context.active_object
+        handle = context.object
         layout.prop(handle, '["VIS"]', text="", icon='OUTLINER_OB_CURVE')
         layout.enabled = False
 
     def grid_draw(self, layout, context):
         #layout = self.layout
-        handle = context.active_object
+        handle = context.object
         rna = handle["_RNA_UI"]["VIS"].to_dict()
         rows = rna["rows"]
         cols = rna["cols"]
         # look for a grid
         grid = context.scene.visualisers.grids.get(rna["name"])
+        row = layout.row(align=True)
+        wm = context.window_manager
+        split = row.split(percentage=0.3, align=True)
+        split.prop(wm, "visualiser_type", text="")
+        split.prop(grid, "name", text="")
         if grid is None:
             layout.label("ERROR", icon='ERROR')
             return None
+        layout.label("Rows x Cols")
         layout.menu("visualiser.rows_columns", text="%d x %d" % (rows, cols))
-        layout.prop(grid, "offset")
+        row = layout.row()
+        col = row.column()
+        col.prop(grid, "offset")
+        col = row.column()
+        col.prop(handle, "scale")
 
     def edit_draw(self, ob, context):
         layout = self.layout
@@ -208,10 +264,13 @@ class CreateSoundVisualiserPanel(Panel):
         scene = context.scene
         a = getAction(context.scene.speaker)
         channels = a["Channels"]
-        ob = context.active_object
+        ob = context.object
         VisualiserRowsColumns.channels = channels
         if "VIS" in ob.keys():
             self.edit_draw(ob, context)
+            self.retarget_draw(ob, context)
+            row = self.layout.row()
+            row.operator("sounddriver.create_visualiser")
             return
 
         n = channels
@@ -289,14 +348,16 @@ class VisualiserEdit(Operator):
     func = StringProperty(default="", options={'SKIP_SAVE'})
     from_target = StringProperty(default="", options={'SKIP_SAVE'})
     to_target = StringProperty(default="", options={'SKIP_SAVE'})
+    from_channel = StringProperty(default="", options={'SKIP_SAVE'})
+    to_channel = StringProperty(default="", options={'SKIP_SAVE'})
 
     @classmethod
     def poll(cls, context):
-        ob = context.active_object
+        ob = context.object
         return "VIS" in ob.keys()
 
     def execute(self, context):
-        handle = context.active_object
+        handle = context.object
         if self.func == "select":
             select_visualiser(handle, context)
 
@@ -310,8 +371,13 @@ class VisualiserEdit(Operator):
         elif self.func == "retarget":
             retarget_visualiser(handle, context, self.from_target,
                                 self.to_target)
+        elif self.func == "rechannel":
+            rechannel_visualiser(handle, context, self.from_channel,
+                                self.to_channel)
         elif self.func == "revert":
             revert_visualiser(handle, context)
+        else:
+            print("op did nothing")
         return {'FINISHED'}
 
 #update methods for grid vis
@@ -319,13 +385,13 @@ class VisualiserEdit(Operator):
 
 def re_offset(self, context):
     #self is the grid ui
-    #the visualise will be context.active_object
+    #the visualise will be context.object
     #the grids children will have index in ["ST_Vis"]
 
     #move all the kiddies to local(0,0,0)
     #this will be the location of the original unit.(good)
 
-    handle = context.active_object
+    handle = context.object
     rna = handle["_RNA_UI"]["VIS"]
     rows = self.rows
     cols = self.cols
@@ -405,8 +471,8 @@ class CreateSoundVisualiser(Operator):
 
 
     def invoke(self, context, event):
-        ob = context.active_object
-        if "VIS" in context.active_object.keys():
+        ob = context.object
+        if "VIS" in context.object.keys():
             #print("CHANGE ROWS AND COLS ON THE VISUALISER")
             rna = ob['_RNA_UI']["VIS"].to_dict()
             grid = context.scene.visualisers.grids[rna["name"]]
@@ -473,6 +539,7 @@ class CreateSoundVisualiser(Operator):
         offset.y =  obj.dimensions.y * offset.y
         offset.z =  obj.dimensions.z * offset.z
 
+        '''
         for i in range(min(channels, rows * cols)):
             handle = handles[i]
 
@@ -480,20 +547,8 @@ class CreateSoundVisualiser(Operator):
             col = i % cols
             v = Vector((row, col, 0))
 
-            '''
 
-            #handle.location = location + v * offset * dimensions
-            handle.location.x = location.x + col * offset.x * dimensions.x
-            handle.location.y = location.y + row * offset.y * dimensions.y
-            handle.location.z = location.z + offset.z * dimensions.z
-
-            x = location.x + col * offset.x * dimensions.x
-            y = location.y + row * offset.y * dimensions.y
-            z = location.z + offset.z * dimensions.z
-            scene.objects.active = handle
-            bpy.ops.transform.translate(value=(x,y,z))
-            '''
-
+        '''
         # XXX Fix for group / objects to find dimensions.
         '''
         #ok the unit object(s)/group can have multiple drivers with inputs
@@ -509,15 +564,13 @@ class CreateSoundVisualiser(Operator):
 
             for idx, fcurve in enumerate(drivers):
                 all_channels, args = get_driver_settings(fcurve)
-                # older versions
-                #all_channels, args = get_driver_settings(fcurve, None)
-                #sweet bit of python from lukas_t
 
                 objects = [(h["ST_Vis"], o) for h in handles if h["ST_Vis"] for o in scene.objects if hasparent(o,h) and o['ST_Vis_idx'] == o_i]
                 for i, o in objects:
                     if not o.animation_data:
                         continue
                     d = o.animation_data.drivers[idx]
+                    expr = d.driver.expression
                     vars = [v for v in d.driver.variables if v.name in all_channels]
                     channel_list = []
                     for var in vars:
@@ -527,6 +580,8 @@ class CreateSoundVisualiser(Operator):
                         if type(spk) is not bpy.types.Speaker:
                             continue
                         name = var.name.replace("0",str(i))
+                        expr = expr.replace(var.name, name)
+                        #print(expr)
                         #change the var name
                         #name = "%s%d" % (channel_name,)
                         var.name = name
@@ -536,7 +591,7 @@ class CreateSoundVisualiser(Operator):
 
                     if not len(channel_list):
                         continue
-                    d.driver.expression = driver_expr(d.driver.expression,
+                    d.driver.expression = driver_expr(expr,
                                                channel_list,
                                                args)
 
@@ -635,39 +690,11 @@ class VisualiserRowsColumns(bpy.types.Menu):
             op.rows = r
             op.cols = c
 
-def visualiser_groups():
-    # Grid Visualiser
-
-    rows = IntProperty(default=1, options={'SKIP_SAVE'})
-    cols = IntProperty(default=1, options={'SKIP_SAVE'})
-    offset = FloatVectorProperty(default=(1.0,1.0,0.0), size=3,
-                                 options={'SKIP_SAVE'},
-                                 update=re_offset)
-    translate = FloatVectorProperty(size=3, options={'SKIP_SAVE'})
-    scale = FloatProperty(default=1.0, name="Visualiser Scale",
-                          options={'SKIP_SAVE'},
-                          description="Scale the Visualiser")
-    prop_dic = {}
-    prop_dic["rows"] = rows
-    prop_dic["cols"] = cols
-    prop_dic["offset"] = offset
-    prop_dic["scale"] = scale
-
-    GridVis = type("GridVis", (PropertyGroup,), prop_dic)
-    register_class(GridVis)
-    prop_dic = {}
-    prop_dic["grids"] = CollectionProperty(type=GridVis)
-
-    Visualisers = type("Visualisers", (PropertyGroup,), prop_dic)
-    register_class(Visualisers)
-
-    bpy.types.Scene.visualisers = PointerProperty(type=Visualisers)
-    
-def register():
-    propdic = {} 
+def register_visualiser_groups():
 
     vis = EnumProperty(items=(
             ("GRID", "Grid", "Create Grid Visualiser from Multi Selection"),
+            ("SPIRAL", "Spiral", "Spirals, (flat, fibonacci)"),
             ("SOUNDSURFACE", "SoundSurface", "Create Sound Surface Disp Map"),
             ("CURVESURFACE", "Curve Surface", "Create Curves from Action"),
             ),
@@ -678,7 +705,56 @@ def register():
 
     bpy.types.WindowManager.visualiser_type = vis
     # Visualiser Groups
-    visualiser_groups()
+
+    # Grid Visualiser
+
+    vis_prop_dic = {}
+
+    from_channel = StringProperty(default = "AA")
+    to_channel = StringProperty(default = "AA")
+    from_target = StringProperty(default = "None")
+    to_target = StringProperty(default = "None")
+    name = StringProperty(default = "Visualiser")
+
+    vis_prop_dic["name"] = name
+    vis_prop_dic["from_channel"] = from_channel
+    vis_prop_dic["to_channel"] = to_channel
+    vis_prop_dic["from_target"] = from_target
+    vis_prop_dic["to_target"] = to_target
+
+
+    scale = FloatProperty(default=1.0, name="Visualiser Scale",
+                          options={'SKIP_SAVE'},
+                          description="Scale the Visualiser")
+    vis_prop_dic["type"] = vis
+    vis_prop_dic["scale"] = scale
+
+    rows = IntProperty(default=1, options={'SKIP_SAVE'})
+    cols = IntProperty(default=1, options={'SKIP_SAVE'})
+    offset = FloatVectorProperty(default=(1.0,1.0,0.0), size=3,
+                                 options={'SKIP_SAVE'},
+                                 update=re_offset)
+    translate = FloatVectorProperty(size=3, options={'SKIP_SAVE'})
+
+    prop_dic = vis_prop_dic
+    prop_dic["rows"] = rows
+    prop_dic["cols"] = cols
+    prop_dic["offset"] = offset
+
+    GridVis = type("GridVis", (PropertyGroup,), prop_dic)
+    register_class(GridVis)
+
+    prop_dic = {}
+    prop_dic["grids"] = CollectionProperty(type=GridVis)
+
+
+    Visualisers = type("Visualisers", (PropertyGroup,), prop_dic)
+    register_class(Visualisers)
+
+    bpy.types.Scene.visualisers = PointerProperty(type=Visualisers)
+    
+def register():
+    register_visualiser_groups()
     # Operators
     register_class(CreateSoundVisualiser)
     register_class(ActionVisualiser)

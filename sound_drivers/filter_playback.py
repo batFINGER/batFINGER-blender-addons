@@ -299,3 +299,8 @@ def setup_filter_handlers():
 def register():
     #setup_filter_handlers()
     bpy.app.driver_namespace["ST_setup_buffer"] = setup_buffer
+
+def unregister():
+    pass
+    #setup_filter_handlers()
+    #bpy.app.driver_namespace["ST_setup_buffer"] = setup_buffer

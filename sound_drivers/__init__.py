@@ -26,13 +26,15 @@ bl_info = {
     "warning": "Still in Testing",
     "wiki_url": "http://wiki.blender.org/index.php/\
                 User:BatFINGER/Addons/Sound_Drivers",
-    "version": (1, 1),
-    "blender": (2, 7, 5),
+    "version": (3, 0),
+    "blender": (2, 7, 6),
     "tracker_url": "",
     "support": 'TESTING',
     "category": "Animation"}
 
 mods = ("sounddriver",
+        "driver_panels",
+        "driver_manager",
         "speaker",
         "sound",
         "visualiser",
@@ -41,6 +43,8 @@ mods = ("sounddriver",
         "NLALipsync",
         "filter_playback",
         "utils",
+        "graph",
+        "BGL_draw_visualiser",
         "presets")
 
 if "bpy" in locals():
@@ -56,7 +60,7 @@ else:
 
 import bpy
 from bpy.types import  AddonPreferences
-from bpy.props import StringProperty
+from bpy.props import StringProperty, BoolProperty
 from bpy.utils import register_class, unregister_class
 
 
@@ -66,6 +70,22 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
 
     temp_folder = StringProperty(
             name="Example File Path",
+            subtype='DIR_PATH',
+            )
+
+    midi_support = BoolProperty(
+            name = "Midi Support",
+            description = "Enable Midi Support",
+            default = False,
+            )
+    smf_dir = StringProperty(
+            name="smf (midi) python path",
+            description="folder where smf is installed",
+            subtype='DIR_PATH',
+            )
+    audio_dir = StringProperty(
+            name="Audio Files Folder",
+            description="folder where audio files are",
             subtype='DIR_PATH',
             )
 
@@ -80,6 +100,7 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         layout = self.layout
         # check that automatic scripts are enabled
         UserPrefs = context.user_preferences
+        paths = UserPrefs.filepaths
         dns = bpy.app.driver_namespace
         row = layout.row()
         row.prop(UserPrefs.system, "use_scripts_auto_execute")
@@ -100,11 +121,35 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         if not test:
             row = layout.row()
             row.operator("drivermanager.update")
+        row = layout.row()
+        row = layout.prop(self, "midi_support")
+        row = layout.row()
+        row.prop(self, "smf_dir")
+        row = layout.row()
+        op = row.operator("wm.url_open", icon='INFO', text="GitHub PySMF Project (Cython)")
+        op.url="https://github.com/dsacre/pysmf"
+        row = layout.row()
+        if "smf" in locals():
+            row.label("SMF IMPORTED OK...", icon='FILE_TICK')
+
+        else:
+            try:
+                import sys
+                sys.path.append(self.smf_dir)
+                import smf
+                row.label("SMF IMPORTED OK", icon='FILE_TICK')
+            except:
+                row.label("SMF FAILED", icon ='ERROR')
+        row = layout.row()
+        row.prop(self, "audio_dir", icon='SOUND')
+        row = layout.row()
+        row.prop(paths, "sound_directory", icon='SOUND')
 
 
 def register():
     register_class(SpeakerToolsAddonPreferences)
     sounddriver.register()
+    driver_panels.register()
     speaker.register()
     sound.register()
     visualiser.register()
@@ -112,6 +157,8 @@ def register():
     EqMenu.register()
     NLALipsync.register()
     presets.register()
+    graph.register()
+    BGL_draw_visualiser.register()
     filter_playback.register()
 
 
@@ -121,8 +168,11 @@ def unregister():
     speaker.unregister()
     sound.unregister()
     visualiser.unregister()
+    driver_panels.unregister()
     Equalizer.unregister()
     EqMenu.unregister()
     NLALipsync.unregister()
     presets.unregister()
-    filter_playback.register()
+    graph.unregister()
+    BGL_draw_visualiser.unregister()
+    filter_playback.unregister()

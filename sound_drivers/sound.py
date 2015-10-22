@@ -12,7 +12,7 @@ from sound_drivers.utils import get_driver_settings,\
                 set_channel_idprop_rna, f, propfromtype,\
                 get_channel_index, copy_sound_action, nla_drop,\
                 validate_channel_name, unique_name, splittime,\
-                get_context_area
+                get_context_area, replace_speaker_action
 
 from sound_drivers.presets import notes_enum, note_from_freq,\
                 freq_ranges, shownote
@@ -78,6 +78,10 @@ class SoundActionMethods:
         action = getAction(getSpeaker(context))
         row = layout.row(align=True)
         row.prop(action, "normalise", expand=True)
+        row = layout.row()
+        row.scale_y = row.scale_x = 0.5
+        row.label("min: %6.2f" % action["min"])
+        row.label("max: %6.2f" % action["max"])
         sub = layout.row()
         sub.enabled = action.normalise != 'NONE'
         sub.prop(action, "normalise_range", text="", expand=True)
@@ -99,9 +103,11 @@ class SoundActionMethods:
             row = layout.row(align=True)
             for strip in nla_track.strips:
                 action = strip.action
+                ch = action.get("channel_name")
+                if ch is None:
+                    continue
                 sub = row.row()
                 sub.alignment = 'LEFT'
-                ch = strip.action["channel_name"]
                 op = sub.operator("soundaction.change", text=ch)
                 op.action = strip.action.name
                 sub.enabled = action != speaker.animation_data.action
@@ -214,8 +220,12 @@ class SoundActionMethods:
         cf.scale_y = action["row_height"]
         for i in range(start, end + 1):
             channel = "%s%d" % (channel_name, i)
+            # TODO ADDED with MIDI
+            if channel not in speaker.keys():
+                continue
             cf.prop(speaker, '["%s"]' % channel, slider=True,
                        emboss=True, text="")
+
 
     def EBT(self, context):
         layout = self.layout
@@ -365,8 +375,14 @@ class SoundVisualiserPanel(SoundActionMethods, Panel):
     def poll(cls, context):
 
         speaker = getSpeaker(context)
+        if speaker is None:
+            return False
 
-        return (speaker and 'VISUAL'
+        if context.space_data.pin_id is not None:
+            if context.space_data.pin_id == speaker:
+                return 'VISUAL' in speaker.vismode
+
+        return (context.object.data == speaker and 'VISUAL'
                 in speaker.vismode)
 
     def draw_header(self, context):
@@ -414,6 +430,8 @@ class SoundVisualiserPanel(SoundActionMethods, Panel):
                 self.FCurveSliders(context)
             elif action.vismode == 'VERTICAL':
                 self.EBT(context)
+            elif action.vismode == 'TABSTER':
+                self.EBT(context)
 
             #self.ColSliders(context)
 
@@ -437,10 +455,10 @@ class SoundActionPanel(SoundActionMethods, Panel):
                         action=None, has_sound=True):
         speaker = getSpeaker(context)
         action = getAction(speaker)
+        layout = self.layout
         if action is None:
             layout.label("NO ACTION", icon='INFO')
             return
-        layout = self.layout
         channel_name = action["channel_name"]
         row = layout.row(align=True)
         if has_sound:
@@ -470,7 +488,13 @@ class SoundActionPanel(SoundActionMethods, Panel):
         self.drawnormalise(context)
         self.copy_action(context)
         row = layout.row()
-        row.operator("soundaction.unbake")
+        enabled = getattr(context.active_object, "data", None) == speaker
+        if enabled:
+            row.operator("soundaction.unbake")
+            row.operator("soundaction.rebake")
+        else:
+            row = layout.row()
+            row.label("Select Speaker to (un)(re)bake", icon='INFO')
 
 
 class SoundNLAPanel(SoundActionMethods, Panel):
@@ -605,6 +629,9 @@ class BakeSoundPanel(BakeSoundGUIPanel, Panel):
             row.label(BakeSoundPanel.report)
             row = layout.row(align=False)
             #row.column_flow(columns=10, align=True)
+
+            return
+            # GOING TO LOSE THIS
             if action:
                 box = layout.box()
                 #box.scale_y = 0.5
@@ -784,7 +811,7 @@ class ChangeSoundAction(Operator):
             speaker.animation_data.action = soundaction
             action_normalise_set(soundaction, context)
 
-        dm = bpy.app.driver_namespace['DriverManager']
+        dm = bpy.app.driver_namespace.get('DriverManager')
         if dm is not None:
             dm.set_edit_driver_gui(context)
         return {'FINISHED'}
@@ -820,7 +847,9 @@ class CopySoundAction(bpy.types.Operator):
         return {'CANCELLED'}
 
 
+
 class UnbakeSoundAction(Operator):
+    '''Rebake'''
     bl_idname = 'soundaction.unbake'
     bl_label = 'unBake to Action'
     bl_description = 'Resample baked f-curve to a new Action / f-curve'
@@ -829,33 +858,163 @@ class UnbakeSoundAction(Operator):
 
     @classmethod
     def poll(cls, context):
-        return getSpeaker(context) is not None
+
+        sp = getSpeaker(context)
+        a = getAction(sp)
+
+        return len(a.fcurves[0].sampled_points)
 
 
     def execute(self, context):
-        obj = context.object.data
-        old_action = obj.animation_data.action
-        name = old_action.name
+        #unbake action
+        speaker = getSpeaker(context)
+        action = getAction(speaker)
+        name = action.name
+        print("-" * 72)
+        print("Rebake action %s to keyframe points" % name)
+        print("-" * 72)
+        rna = speaker["_RNA_UI"]
+        pts = [([(sp.co[0], c.evaluate(sp.co[0])) for sp in c.sampled_points],
+               c.data_path, c.array_index)
+               for c in action.fcurves if len(c.sampled_points)]
 
-        pts = [(c.sampled_points, c.data_path, c.array_index) for c in obj.animation_data.action.fcurves if c.sampled_points]
+        keys = bpy.data.actions.new('tmpaction')
+        keys["max"] = -float("inf")
+        keys["min"] = float("inf")
+        for k,v  in action.items():
+            keys[k] = v
+        #keys.normalise = 'NONE'
+        fcurves = [fc for fc in keys.fcurves if len(fc.sampled_points)]
+        sp_rna = {}
+        for fc in fcurves:
+            keys.fcurves.remove(fc)
         if pts:
-            keys = old_action.copy()
-            for f in keys.fcurves:
-                keys.fcurves.remove(f)
+            
             for sam, dat, ind in pts:
-                fcu = keys.fcurves.new(data_path=dat, index=ind)
                 
+                fcu = keys.fcurves.new(data_path=dat, index=ind)
+                #if self.RGB: fcu.color_mode = 'AUTO_RGB'
                 fcu.keyframe_points.add(len(sam))
                 for i in range(len(sam)):
                     w = fcu.keyframe_points[i]
-                    w.co = w.handle_left = w.handle_right = sam[i].co
-            obj.animation_data.action = keys
-            # replace in nla
-            strips = [s for t in obj.animation_data.nla_tracks for s in t.strips if s.action == old_action]
-            for s in strips:
-                s.action = keys
-            bpy.data.actions.remove(old_action)
+                    w.co = w.handle_left = w.handle_right = sam[i]
+                
+                channel_name = dat.strip('["]')
+                
+                is_music = False
+                fc_range, points = fcu.minmax
+                low = rna[channel_name]['low']
+                high = rna[channel_name]['high']
+                (_min, _max) = fc_range
+                if _min < keys["min"]:
+                    keys["min"] = _min
+                if _max > keys["max"]:
+                    keys["max"] = _max
+
+                set_channel_idprop_rna(channel_name,
+                                       rna,
+                                       low,
+                                       high,
+                                       fc_range,
+                                       fc_range,
+                                       is_music=is_music)
+                sp_rna[channel_name] = rna[channel_name].to_dict()
+                print("%4s %8s %8s %10.4f %10.4f" %\
+                          (channel_name,\
+                           f(low),\
+                           f(high),\
+                           fc_range[0],\
+                           fc_range[1]))
+            
             keys.name = name
+
+            keys['rna'] = str(sp_rna)
+            
+            keys.normalise = 'NONE'
+            #keys.property_unset('normalise_range')
+            # trash the old action
+
+        replace_speaker_action(speaker, action, keys)
+        return{'FINISHED'}
+
+
+
+class ReBakeSoundAction(Operator):
+    bl_idname = 'soundaction.rebake'
+    bl_label = 'ReBake to Action'
+    bl_description = 'Resample baked f-curve to a new Action / f-curve'
+    bl_options = {'UNDO'}
+
+
+    @classmethod
+
+    def poll(cls, context):
+
+        sp = getSpeaker(context)
+        a = getAction(sp)
+
+        return len(a.fcurves[0].keyframe_points)
+
+
+    def execute(self, context):
+        # rebake action using modifiers
+        scene = context.scene
+        speaker = getSpeaker(context)
+        action = getAction(speaker)
+        name = action.name
+        print("-" * 72)
+        print("Rebake  action %s to sampled points" % name)
+        print("-" * 72)
+        rna = speaker["_RNA_UI"]
+        sp_rna = {}
+        pts = [(c, [(sp.co[0], c.evaluate(sp.co[0])) for sp in c.keyframe_points]) for c in action.fcurves]
+        action.normalise = 'NONE'
+        action["max"] = -float("inf")
+        action["min"] = float("inf")
+        for fc, sam in pts:
+            
+            #if self.RGB: fcu.color_mode = 'AUTO_RGB'
+            
+            for i, p in enumerate(sam):
+                w = fc.keyframe_points[i]
+                w.co = p
+            
+            channel_name = fc.data_path.strip('["]')
+            
+            is_music = False
+            fc_range, points = fc.minmax
+            low = rna[channel_name]['low']
+            high = rna[channel_name]['high']
+            (_min, _max) = fc_range
+            if _min < action["min"]:
+                action["min"] = _min
+            if _max > action["max"]:
+                action["max"] = _max
+
+            set_channel_idprop_rna(channel_name,
+                                   rna,
+                                   low,
+                                   high,
+                                   fc_range,
+                                   fc_range,
+                                   is_music=is_music)
+            sp_rna[channel_name] = rna[channel_name].to_dict()
+            print("%4s %8s %8s %10.4f %10.4f" % (channel_name, f(low), f(high), fc_range[0], fc_range[1]))
+
+        
+        # ok now bake
+        for fc in action.fcurves:
+            fc.select = True
+        
+        start, end = scene.frame_start, scene.frame_end
+        area_type = context.area.type
+        context.area.type = 'GRAPH_EDITOR'
+        scene.frame_start = action.frame_range[0]
+        scene.frame_end = action.frame_range[1]
+        bpy.ops.graph.bake()
+        context.area.type = area_type
+        scene.frame_start, scene.frame_end = start, end
+
         return{'FINISHED'}
 
 
@@ -950,7 +1109,7 @@ class BakeSoundAction(Operator):
 
         if event.type == 'TIMER':
             if self.baking:
-                return
+                return {'PASS_THROUGH'}
             #context.scene.frame_set(1)
             self.baking = True
             fc = action.fcurves[self.bakeorder[self.count]]
@@ -996,8 +1155,11 @@ class BakeSoundAction(Operator):
                 '''
                 return self.cancel(context)
 
+            '''
             if self.graph:
-                bpy.ops.graph.view_all(self.c)
+                #bpy.ops.graph.view_all(self.c)
+                bpy.ops.graph.view_all_with_bgl_graph()
+            '''
 
             context.area.type = 'PROPERTIES'
             t1 = time.clock()
@@ -1030,6 +1192,7 @@ class BakeSoundAction(Operator):
                             .. continuing" % (bakeoptions.channel_name,\
                                                       channel)
                     self.count += 1
+                    bpy.ops.graph.view_all_with_bgl_graph()
                 #need to set count down one
             else:
                 BakeSoundPanel.status[channel] = 1
@@ -1213,15 +1376,17 @@ class BakeSoundAction(Operator):
 
         action['rna'] = str(sp_rna)
 
-        context.window_manager.event_timer_remove(self._timer)
         BakeSoundPanel.baking = False
         # drop the action into the NLA
-        nla_drop(sp, action, 1, channel_name)
+        nla_drop(sp, action, 1, "%s %s" %(channel_name, channel_name))
         # normalise to action. This will set the
         action.normalise = 'ACTION'
         bakeoptions.channel_name = unique_name(sp.channels, channel_name)
         if context.scene.speaker is None:
             sp.is_context_speaker = True
+
+        context.window_manager.event_timer_remove(self._timer)
+        bpy.ops.graph.view_all_with_bgl_graph()
         return {'FINISHED'}
 
     def clean(self):
@@ -1261,7 +1426,8 @@ def register():
                 ("SOUND", "SOUND", "Basic Sound"),
                 ("SFX", "SFX", "Sound Effects"),
                 ("MUSIC", "MUSIC", "Music"),
-                ("VOICE", "VOICE", "Voice")
+                ("VOICE", "VOICE", "Voice"),
+                ("MIDI", "MIDI", "Midi"),
                 ),
                 name="type",
                 default="SOUND",
@@ -1332,6 +1498,7 @@ def register():
     bpy.utils.register_class(CopySoundAction)
     bpy.utils.register_class(BakeSoundAction)
     bpy.utils.register_class(UnbakeSoundAction)
+    bpy.utils.register_class(ReBakeSoundAction)
     bpy.utils.register_class(VisualiserOptions)
 
     bpy.types.Sound.bakeoptions = PointerProperty(type=bakeoptions)
@@ -1349,6 +1516,7 @@ def unregister():
     bpy.utils.unregister_class(ChangeSoundAction)
     bpy.utils.unregister_class(BakeSoundAction)
     bpy.utils.unregister_class(UnbakeSoundAction)
+    bpy.utils.unregister_class(ReBakeSoundAction)
     bpy.utils.unregister_class(SoundPanel)
     bpy.utils.unregister_class(SoundVisualiserPanel)
     bpy.utils.unregister_class(VisualiserOptions)

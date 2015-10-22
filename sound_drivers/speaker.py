@@ -35,9 +35,9 @@ def get_channel_names(self):
                  and k.endswith('0')]
     channels = [a['channel_name'] for a in bpy.data.actions 
                 if 'channel_name' in a.keys()
-                and a['channel_name'] in channels
+                #and a['channel_name'] in channels
                 and a['wavfile'] == self.sound.name]
-    return list(set(channels))
+    return sorted(list(set(channels)))
 
 bpy.types.Speaker.channels = property(get_channel_names)
 

@@ -11,7 +11,8 @@ from sound_drivers.presets import note_from_freq
 
 bpy_collections = ["scenes", "objects", "meshes", "materials", "textures",
         "speakers", "worlds", "curves", "armatures", "particles", "lattices",
-        "shape_keys", "lamps", "cameras", "node_groups"]
+        "shape_keys", "lamps", "cameras", "node_groups", "movie_clips", "metaballs"]
+
 icons = {'SCENE_DATA': ["scenes", "Scene"],
          'OBJECT_DATA': ["objects", "Object"],
          'MESH_DATA': ["meshes"],
@@ -116,12 +117,14 @@ def format_data_path(row, path, icon_only=False, padding=0):
 
 
 def icon_from_bpy_datapath(path):
-    icons = ['SCENE', 'OBJECT_DATA', 'MESH', 'MATERIAL',
+    icons = ['SCENE', 'OBJECT_DATA', 'OUTLINER_OB_MESH', 'MATERIAL',
             'TEXTURE', 'SPEAKER',
             'WORLD', 'OUTLINER_OB_CURVE', 'OUTLINER_OB_ARMATURE',
             'PARTICLES', 'LATTICE_DATA',
             'SHAPEKEY_DATA', 'LAMP', 'CAMERA_DATA']
 
+    if not len(path):
+        return 'BLANK1'
     sp = path.split(".")
     col = sp[2].split('[')[0]
     #collection name will be index
@@ -143,6 +146,8 @@ def getAction(speaker, search=False):
                 return None
             return action
         if speaker.animation_data.use_nla:
+            # XXXXX
+            #return speaker.animation_data.nla_tracks[0].strips[0].action
             return None
     return action
 
@@ -156,7 +161,7 @@ def getSpeaker(context, action=None):
             if s.animation_data.action == action\
                or action in [st.action
                         for t in s.animation_data.nla_tracks
-                        for st in t]:
+                        for st in t.strips]:
 
                 return s
     if space.type == 'PROPERTIES':
@@ -166,7 +171,7 @@ def getSpeaker(context, action=None):
         if(context.active_object is not None
                 and context.active_object.type == 'SPEAKER'):
             return context.active_object.data
-    return None
+    return context.scene.speaker
 
 
 def strip_expression(exp, fname):
@@ -350,9 +355,11 @@ def set_channel_idprop_rna(channel,
     map_min, map_max = min(map_range), max(map_range)
 
     # set the channel UI properties
+    note = "C"
     if is_music:
+        note = note_from_freq(low)
         desc = "%s (%s) (min:%.2f, max:%.2f)" %\
-                    (note_from_freq(low), f(low), min_, max_)
+                    (note, f(low), min_, max_)
     else:
         desc = "Frequency %s to %s (min:%.2f, max:%.2f)" %\
                     (f(low),  f(high), min_, max_)
@@ -366,7 +373,12 @@ def set_channel_idprop_rna(channel,
                             "a": min_,
                             "b": max_}
 
+    # ugly hack for MIDI
+    if is_music:
+        speaker_rna[channel]["note"] = note
+
     return None
+
 # utility function to remove all handlers by their string function name
 
 
@@ -468,6 +480,7 @@ def copy_sound_action(speaker, newname):
 
 
 def nla_drop(obj, action, frame, name, multi=False):
+    print("nla_drop", name)
     if not multi:
         #check if there is already a strip with this action
         tracks = [s for t in obj.animation_data.nla_tracks
@@ -477,6 +490,7 @@ def nla_drop(obj, action, frame, name, multi=False):
             return None
     #add nla track (name) with action at frame
     nla_track = obj.animation_data.nla_tracks.new()
+    nla_track.name = name
     strip = nla_track.strips.new(name, frame, action)
 
 
@@ -625,3 +639,37 @@ def get_context_area(context, context_dict, area_type='GRAPH_EDITOR',
                         context_dict["region"] = region
                         return area
     return None
+
+
+def replace_speaker_action(speaker, action, new_action):
+    speaker.animation_data.action = new_action
+    strips = [s for t in speaker.animation_data.nla_tracks for s in t.strips if s.action == action]
+    for s in strips:
+        s.action = new_action
+    action['wavfile'] = "TRASH"
+    action.use_fake_user = False
+    bpy.data.actions.remove(action)
+    return None
+
+
+def copy_driver(from_driver, target_fcurve):
+    ''' copy driver '''
+    td = target_fcurve.driver
+    fd = from_driver.fcurve.driver
+    td.type = fd.type
+    td.expression = fd.expression
+    for var in fd.variables:
+        v = td.variables.new()
+        v.name = var.name
+        v.type = var.type
+        if from_driver.is_monkey:
+            continue
+        for i, target in var.targets.items():
+            if var.type == 'SINGLE_PROP':
+                v.targets[i].id_type = target.id_type
+                v.targets[i].data_path = target.data_path
+            v.targets[i].id = target.id
+            v.targets[i].transform_type = target.transform_type
+            v.targets[i].transform_space = target.transform_space
+            v.targets[i].bone_target = target.bone_target
+

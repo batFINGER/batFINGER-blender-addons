@@ -41,45 +41,51 @@ def InitSoundTools(dummy):
 
 
 def live_speaker_view(scene):
+    '''
+    Update the visualiser in the PROPERTIES Panel
+
+    this can be very heavy when animating so check if needed
+
+    '''
+
     if len(scene.soundspeakers) == 0:
         return None
     if scene is None:
         return None
-    dns = bpy.app.driver_namespace
-    #scene = bpy.context.scene
-    #print("Frame Change", scene.frame_current)
-    frame = scene.frame_current
-    #scene.play = True
-    dm = dns.get("DriverManager")
 
-    if bpy.context.screen is None:
+    if scene.speaker is None:
         return None
+
+    if 'VISUAL' not in scene.speaker.vismode:
+        return None
+
     for area in bpy.context.screen.areas:
         if area.type == 'PROPERTIES':
-            area.tag_redraw()
+            if not (area.spaces.active.pin_id is not None and area.spaces.active.pin_id == scene.speaker):
+                if scene.objects.active is not None:
+                    if scene.objects.active.type != 'SPEAKER':
+                        return None
+            if area.spaces.active.context == 'DATA':
+                area.tag_redraw()
 
-        '''
-        elif area.type == 'VIEW_3D' and dm and dm.edit_driver:
-
-            # region 1 is tools
-            # slows down too much
-            area.regions[1].tag_redraw()
-        '''
     return None
 
 # DRIVER methods
 
 
-def local_grabber(locs):
+def local_grabber(index, locs, dm):
+    '''
     dns = bpy.app.driver_namespace
     dm = dns.get("DriverManager")
+    '''
+    #print("localgrabber")
     if dm is None:
         return 0.0
-    ed = dm.edit_driver
+    ed = dm.find(index)
+
     if ed is not None:
-        ed.locs = locs
-    dm.edit_driver_locals = locs
-    #print(locs)
+        setattr(ed, "locs", locs)
+        #print(ed.driven_object)
     return 0.0
 
 
@@ -477,6 +483,7 @@ def action_normalise_set(self, context):
 
     #check_range(self)
     #normalise_action(speaker)
+    bpy.ops.graph.view_all_with_bgl_graph()
     return None
 
 
@@ -664,12 +671,6 @@ def register():
                                 description="Panel Filters",
                                 options={'HIDDEN', 'ENUM_FLAG'})
 
-    '''
-                                default={'SOUND'},
-                ("DRIVERS", "DRIVERS", "Create Custom Driver(s)"),
-                ("NLA", "NLA", "Lay Down Tracks in the NLA"),
-                ("LIPSYNC", "LIPSYNC", "Add Lip sync to this wav")
-    '''
 
     bpy.types.Action.vismode = EnumProperty(items=(
                 ("SLIDER", "Sliders", "Display as Property Sliders"),

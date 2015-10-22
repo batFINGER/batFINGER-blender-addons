@@ -27,16 +27,15 @@ def dprint(str):
         print(str)
 
 
-def main(self, context, speaker, action, channel_list):
-    if context is None or len(channel_list) == 0:
+def main(self, context, edit_driver, speaker, action, channel_list):
+    if context is None or not len(channel_list):
         return False
 
     space = context.space_data
     search = True
     if action  is not None:
         channel = action["channel_name"]
-    dm = bpy.app.driver_namespace["DriverManager"]
-    driver = dm.edit_driver.fcurve
+    driver = edit_driver.fcurve
 
     if driver:
         all_channels, args = get_driver_settings(driver)
