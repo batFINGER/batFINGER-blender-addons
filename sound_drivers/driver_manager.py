@@ -1068,7 +1068,7 @@ class DriverManager():
 
     def check_added_drivers(self, obj):
         self.ticker += 1
-        if self.ticker < 50:
+        if self.ticker < 20: # REFACTO FOR UPDATE SPEED
             return False
         self.ticker = 0
         if obj is None:
