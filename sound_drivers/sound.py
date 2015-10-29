@@ -459,7 +459,9 @@ class SoundActionPanel(SoundActionMethods, Panel):
         if action is None:
             layout.label("NO ACTION", icon='INFO')
             return
-        channel_name = action["channel_name"]
+        channel_name = action.get("channel_name")
+        if channel_name is None:
+            return
         row = layout.row(align=True)
         if has_sound:
             sub = row.row()

@@ -1,26 +1,26 @@
 import bpy
 
-#from . import debug
 from bpy.types import FCurve, Operator
 from bpy.utils import register_class, unregister_class
 from mathutils import Vector, Color, Euler, Quaternion
-import re
-from operator import attrgetter
+
 from bpy.app.handlers import persistent
+
 from bpy.props import StringProperty, PointerProperty, BoolProperty,\
     IntProperty, CollectionProperty, FloatProperty,\
     EnumProperty
+
 from bpy.types import PropertyGroup
-from sound_drivers.utils import  driver_filter_draw,\
-    getSpeaker, getAction, \
+
+from sound_drivers.utils import getSpeaker, getAction, \
     remove_handlers_by_prefix,\
     get_driver_settings,\
     driver_expr, bpy_collections
 
 from sound_drivers.EqMenu import main
 from sound_drivers import debug
+
 from sound_drivers.driver_manager import DriverManager, SoundDriver
-#dm = None
 
 '''
 Update methods
@@ -686,9 +686,10 @@ class Bake2FCurveOperator(DriverManager_DriverOp, Operator):
         return False
 
 
-    def bake(self, context):
+    def bake(self, context, samples=False):
         ''' bake a driver to an action fcurve'''
 
+        # REFACTO add flag to convert between kfs and samples
         def get_action_fcurve(driver):
             obj = driver.fcurve.id_data
             action = obj.animation_data.action # will have animation_data from driver
@@ -699,7 +700,6 @@ class Bake2FCurveOperator(DriverManager_DriverOp, Operator):
                 return fc[0]
             fc = action.fcurves.new(driver.data_path, driver.array_index)
             return fc
-
 
         scene = context.scene
         frame = self.f
@@ -733,6 +733,7 @@ class Bake2FCurveOperator(DriverManager_DriverOp, Operator):
             #REFACTO 
             frame += 1
             '''
+            # frame by frame kfi
             if self.driver.is_vector:
                 driver.id_data.keyframe_insert(driver.data_path,
                                                index=driver.array_index)
@@ -747,14 +748,9 @@ class Bake2FCurveOperator(DriverManager_DriverOp, Operator):
         #x = []  # refactor got keyframe_points.foreach_set
         for i in range(l):
             fc.keyframe_points.insert(*coords[i])
-            '''
-            fc.keyframe_points.add(1)
-            kfp = fc.keyframe_points[-1]
-            kfp.handle_left = kfp.handle_right = kfp.co = coords[i]
-            kfp.interpolation = 'BEZIER'
-            '''
         
-        fc.convert_to_samples(self.f, frame_end)
+        if samples:
+            fc.convert_to_samples(self.f, frame_end)
         return True
 
 

@@ -113,8 +113,6 @@ class SoundDriver():
 
             box = layout.box()
 
-
-
             
             row = box.row()
             row.label("SoundDriver", icon='SOUND')
@@ -530,23 +528,26 @@ class SoundDriver():
             input_ = l[1]
             node = l[0]
 
-        #debug.print("NIV", node, input_, value, self.data_path)
-        node = self.driven_object.path_resolve(node)
-        #row.label(node.rna_type.identifier + str(l))
+        debug.print("NIV", node, input_, value, self.data_path)
+        node = self.driven_object.path_resolve(node) # REFACTO
+        row = layout.row() # REFACTO
+        row.label(node.rna_type.identifier + str(l)) # REFACTO
         if length == 2:
             layout.prop(node, l[1])
             return None
         # check for connector
 
         node_input = node.path_resolve(input_)
-        layout.enabled = not node_input.is_linked
+        layout.enabled = not getattr(node_input, "is_linked", False)
         # row.label(str(node_input.is_linked))
         val = node_input.path_resolve(value)
         #node_input.draw(context, layout, node, node_input.name)
         fmt_str = "%s:%s"
-        if node_input.name.lower().startswith("color"):
+
+        ni_name = getattr(node_input, "name", "NO_name")
+        if ni_name.lower().startswith("color"):
             fmt_str = "%%s: %c %%s" % "RGBA"[self.array_index]
-        name = fmt_str % (node.name, node_input.name)
+        name = fmt_str % (getattr(node, "name", "No Node Name"), ni_name)
         layout.prop(node_input, "default_value", index=self.array_index,
                     text=name)
         #node_input.draw(context, row, node, "")
@@ -1371,7 +1372,43 @@ class DriverManager():
 
         row.menu('drivermanager.menu', text=title, icon='DRIVER')
 
+    def panel_posebone_constraint_draw(self, panel, context):
+        
+        self.check_deleted_drivers()
+        active_pose_bone = context.active_pose_bone
+        space = context.space_data
+        if space.pin_id:
+            active_pose_bone = space.pin_id
+            print("PINID", active_pose_bone)
+            print(context.active_pose_bone)
+            print(context.bone)
+
+        constraints = context.pose_bone.constraints.values()
+
+        #get all the drivers that have a do in constaints
+        drivers = [d for d in self.all_drivers_list if d.driven_object in constraints]
+
+        dic = {}
+        x = {}
+        for i, o in enumerate(drivers):
+
+            if o is None or o.driven_object is None:
+                continue
+            obj = o.fcurve.id_data
+            m = dic.setdefault('%s["%s"]' % ("constraints", getattr(o.driven_object, "name", "NoName")), {}) 
+            m[i] = o.index
+
+        #debug.print("PD", collection, ob, obj, search, dic)
+        if len(dic):
+            self.panel_draw_menu(panel, context, title="pose_bone_constraint")
+            self.draw_layout(panel.layout, context, dic)
+        #self.check_added_drivers(obj)
+        #self.check_added_drivers(context.object)
+
     def panel_draw(self, panel, context):
+        if panel.search == "pose_bone_constraint":
+            self.panel_posebone_constraint_draw(panel, context)
+            return None
         def node_name(str):
             name = str.replace('nodes["', '')
             name = name[:name.find(']') - 1]
@@ -1385,10 +1422,17 @@ class DriverManager():
         obj = getattr(context, panel_context)
         if collection == "particles":
             obj = getattr(obj, "settings", None)
+
+        elif panel_context == "bone":
+            print("BONE", obj)
+        elif panel_context == "pose_bone":
+            print("BONE", obj)
+
         space = context.space_data
 
         if space.pin_id:
             obj = space.pin_id
+            print("PINID BONE", obj)
 
         if obj is None:
             return
@@ -1428,6 +1472,7 @@ class DriverManager():
 
     def _PanelInvader(self, remove_only=False):
         def SD__draw(panel, context):
+            panel.layout.label("TEST")
             self.panel_draw(panel, context)
 
         default_dic = {"panels": [],
@@ -1459,6 +1504,24 @@ class DriverManager():
                                 "collection": "meshes",
                                 "panels":["DATA_PT_context_mesh"],
                                 "context": "mesh",
+                               },
+                     "armatures": {
+                                "collection": "armatures",
+                                "panels":["DATA_PT_context_arm"],
+                                "context": "armature",
+                               },
+                     "bone_constaints": {
+                                "collection": "objects",
+                                "panels":["BONE_PT_context_bone"],
+                                "context": "object",
+                                "search": "pose.bones",
+                                },
+                     "pose_bones": {
+                                "collection": "objects",
+                                "panels":["BONE_PT_constraints"],
+                                "context": "pose_bone",
+                                "search": "pose_bone_constraint",
+                                "draw": "prepend", # will prepend
                                },
                      "metaballs": {
                                 "collection": "metaballs",

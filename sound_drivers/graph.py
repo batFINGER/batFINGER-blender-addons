@@ -1,5 +1,6 @@
 import bpy
 from sound_drivers.utils import get_context_area, getAction, getSpeaker
+from sound_drivers.BGL_draw_visualiser import ScreenAreaAction
 from mathutils import Vector
 
 def get_view_action(bl, tr):
@@ -45,6 +46,7 @@ def focus_areas(context):
     (x, y) = action.frame_range
     
     c = context.copy()
+    s = ScreenAreaAction(context.screen)
     for i, area in enumerate(context.screen.areas):
         if area.type != 'GRAPH_EDITOR':
             continue
@@ -62,19 +64,20 @@ def focus_areas(context):
         #obj.animation_data.action = dummyaction
         sp.animation_data.action = dummyaction
 
-        if not (action.bgl_action_draw.use_GRAPH_EDITOR
-                and wm.bgl_draw_speaker):
+        bgl_area = s.get_area(area)
+
+        if (bgl_area is None  or not wm.bgl_draw_speaker):
             bpy.ops.graph.view_all(c)
             continue
         
-        if hasattr(action, "bgl_action_draw"):
+        if bgl_area is not None:
     
             ah = area.height
             v2d = region.view2d
             rh = region.height
 
-            pc = action.bgl_action_draw.GRAPH_EDITOR.height / 100.0
-            apc = (action.bgl_action_draw.GRAPH_EDITOR.loc[1] + (pc * rh)) / ah
+            pc = bgl_area.GRAPH_EDITOR.height / 100.0
+            apc = (bgl_area.GRAPH_EDITOR.loc[1] + (pc * rh)) / ah
             vis_h = (pc + 2) * rh / 100.0 # plus header box
 
             #(m, n) = Vector(v2d.region_to_view(1,1)) - Vector(v2d.region_to_view(0,0))
@@ -88,6 +91,8 @@ def focus_areas(context):
             newmin = min - (apc / (1.0 - apc)) * range  
             min = newmin
                 
+            print(bgl_area)
+            print("GRAPH RESIZE", pc, apc, vis_h, min)
             dummyaction  = get_view_action((x, min), (y, max)) 
             #bpy.ops.graph.view_selected(c, include_handles=False)
             bpy.ops.graph.view_all(c)

@@ -126,6 +126,14 @@ def icon_from_bpy_datapath(path):
     if not len(path):
         return 'BLANK1'
     sp = path.split(".")
+    # bug fix on pose bone constraints
+    if len(sp) < 3:
+        return 'BLANK1'
+    
+    sp =  sp[2].split('[')
+    if not len(sp):
+        return 'BLANK1'
+
     col = sp[2].split('[')[0]
     #collection name will be index
     if col not in bpy_collections\
@@ -673,3 +681,7 @@ def copy_driver(from_driver, target_fcurve):
             v.targets[i].transform_space = target.transform_space
             v.targets[i].bone_target = target.bone_target
 
+def interp(value, f, t):
+    
+    m = (value - f[0]) / (f[1] - f[0])
+    return t[0] + m * (t[1] - t[0])
