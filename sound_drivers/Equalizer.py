@@ -607,14 +607,16 @@ def dummy(self, context):
 
 
 def panel_items(self, context):
+    # if is_baking then only show bake panel
     #print("PANEL ITEMS", self, context.scene)
+    if bpy.types.BakeSoundPanel.baking:
+        return [("BAKE", "BAKE", "Bake Sound to FCurves", 'FCURVE', 64)]
+    
     pv = [("SPEAKER", "SPEAKER", "Edit Speaker properties", 'SPEAKER', 1),
           ("SOUND", "SOUND", "Edit sound properties", 'SOUND', 2)]
     if self.sound is not None:
         pv.extend([("BAKE", "BAKE", "Bake Sound to FCurves", 'FCURVE', 64)])
-        #print("HAS SOUND")
     if not getattr(self, "animation_data", None):
-        #print("HAS NO ANIMATION DATA")
         pass
     else:
         if self.animation_data.action is not None:
@@ -625,10 +627,8 @@ def panel_items(self, context):
               ("ACTION", "ACTION", "Sound Action Properties", 'ACTION', 4),
               ("OUT", "OUT", "Filter Output", 'FILTER', 32)])
 
-        if self.animation_data.action is not None\
-                    and len(self.animation_data.nla_tracks) > 1:
+        if len(self.animation_data.nla_tracks) > 1:
             pv.extend([("NLA", "NLA", "NLA SoundTracks", 'NLA', 8)])
-            #print("HAS ACTION")
         '''
         pv = [("SPEAKER", "SPEAKER", "Edit Speaker properties",'SPEAKER',1),
               ("SOUND", "SOUND", "Edit sound properties",'SOUND',2),

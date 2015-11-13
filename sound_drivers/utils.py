@@ -130,11 +130,11 @@ def icon_from_bpy_datapath(path):
     if len(sp) < 3:
         return 'BLANK1'
     
+    print("SPP>>>", sp, sp[2])
     sp =  sp[2].split('[')
-    if not len(sp):
-        return 'BLANK1'
 
-    col = sp[2].split('[')[0]
+    print("SPP>>>", sp)
+    col = sp[-1].split('[')[0]
     #collection name will be index
     if col not in bpy_collections\
            or bpy_collections.index(col) >= len(icons):
@@ -343,8 +343,13 @@ def driver_filter_draw(layout, context):
 
 def f(freq):
     #output a format in Hz or kHz
+    if freq < 10:
+        mHz = freq * 1000
+        return("%dmHz" % mHz)
+    if freq < 100:
+        return("%.2fHz" % freq)
     if freq < 1000:
-        return("%dHz" % freq)
+        return("%.1fHz" % freq)
     elif freq < 1000000:
         khz = freq / 1000
         return("%.2fkHz" % khz)
@@ -682,6 +687,5 @@ def copy_driver(from_driver, target_fcurve):
             v.targets[i].bone_target = target.bone_target
 
 def interp(value, f, t):
-    
     m = (value - f[0]) / (f[1] - f[0])
     return t[0] + m * (t[1] - t[0])

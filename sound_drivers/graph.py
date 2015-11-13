@@ -46,7 +46,7 @@ def focus_areas(context):
     (x, y) = action.frame_range
     
     c = context.copy()
-    s = ScreenAreaAction(context.screen)
+    s = ScreenAreaAction(context)
     for i, area in enumerate(context.screen.areas):
         if area.type != 'GRAPH_EDITOR':
             continue

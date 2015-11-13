@@ -32,7 +32,8 @@ bl_info = {
     "support": 'TESTING',
     "category": "Animation"}
 
-mods = ("sounddriver",
+mods = ("screen_panels",
+        "sounddriver",
         "driver_panels",
         "driver_manager",
         "speaker",

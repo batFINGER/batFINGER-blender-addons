@@ -1,6 +1,8 @@
 import sys
 dprint = print
+debug = 0
 
 
 def print(*args, sep=' ', end='\n'):
-    dprint("ST_DB: ", *args)
+    if debug:
+        dprint("ST_DB: ", *args)

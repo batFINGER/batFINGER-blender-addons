@@ -50,18 +50,31 @@ def toggle_driver_fix(self, context):
 
 
 def wonk(self, context):
-    dm = bpy.app.driver_namespace['DriverManager']
+    dm = context.driver_manager
     sp = context.scene.speaker
     a = getAction(sp) # REFACTO
     a = bpy.data.actions.get(self.action)
     if dm is None or sp is None or a is None:
         return None
     p = self.path_from_id()
+    '''
+    print(p) #REFACTO
     p = p[:p.find(".channels")]
+    print(p)
     gui = self.id_data.path_resolve(p)
+    if gui is None:
+        print("NO GUI")
+        return None
 
-    ed = dm.find(dm.filter_dic[gui.collection][gui.object][str(gui.array_index)])
-    if ed._setting_channels:
+    '''
+    gui = self
+    idx = int(self.name.split("_")[1])
+    #ed = dm.find(dm.filter_dic[gui.collection][gui.object][str(gui.array_index)])
+    d = dm.find(idx)
+    ed = self
+    if ed is None:
+        return None
+    if d._setting_channels:
         return None
     #cn = a['channel_name']
     cn = self.channel
@@ -70,13 +83,14 @@ def wonk(self, context):
     elif self.rna_type.identifier.startswith('GUIDriver'):
         channel_list = [ch.name for ch in ed.channels if
                         ch.value and ch.name.startswith(cn)]
-        main(self, context, ed, sp, a, channel_list)
+        main(self, context, d, sp, a, channel_list)
         # do amplify things etc
         pass
     #main(self, context, speaker, action, channel_list)
 
 
 def callback(driver_objects, collection):
+    return
     dns = bpy.app.driver_namespace
     dm = dns.get("DriverManager")
     if collection.startswith("ob"):
@@ -128,7 +142,6 @@ def set_var_index(self, context):
                          data_path=self.data_path,
                          array_index=self.array_index)
 
-    #print("SETVARINDEX", self.locs.find(self.varname))
     return
 
 
@@ -161,8 +174,6 @@ def xxxx(self, context):
 def load_channels(self, context):
     scene = context.scene
     a = bpy.data.actions.get(self.action)
-    #print("LOAD CHANNELS", self.channel, self.action, a)
-    #dummy, args = get_driver_settings(self.fcurve)
     dm = context.driver_manager
     driver = dm.find(int(self.name[3:]))
     driver = driver.fcurve.driver
@@ -204,6 +215,14 @@ def aget(self):
         return actions[0]
     else:
         return "None"
+
+def gui_type_items(self, context):
+    gui_types = [("DRIVER", "", "Standard Driver Settings", 'DRIVER', 1)]
+        #("EXPRESSION", "", "Standard Driver Settings", 'FILE_SCRIPT', 16),
+    if context.scene.speaker is not None:
+        gui_types.extend([("SOUNDDRIVER", "", "Sound Driver", 'SOUND', 2), ("ACTION", "", "Show Baked Actions", 'ACTION', 4)])
+        #("VISUALISER_UNIT", "", "Visualiser Unit", 'SEQ_HISTOGRAM', 4),
+    return gui_types
 
 def register_props():
     BPY_COLLECTION_TYPE = type(bpy.data.objects)
@@ -284,15 +303,9 @@ def register_props():
         update=wonk,
     )
 
-    gui_types = EnumProperty(items=(
-        ("DRIVER", "", "Standard Driver Settings", 'DRIVER', 8),
-        ("EXPRESSION", "", "Standard Driver Settings", 'FILE_SCRIPT', 16),
-        ("SOUNDDRIVER", "", "Sound Driver", 'SOUND', 1),
-        ("ACTION", "", "Show Baked Actions", 'ACTION', 2),
-        ("VISUALISER_UNIT", "", "Visualiser Unit", 'SEQ_HISTOGRAM', 4),
-                                    ),
+    gui_types = EnumProperty(items=gui_type_items,
         name="Driver Display",
-        default={'DRIVER'},
+        #default={'DRIVER'},  # default can't be set when items is a func.
         description="Driver Details to Display (Multi Select)",
         options={'HIDDEN', 'ENUM_FLAG'},
         #update=wonk,
@@ -596,7 +609,8 @@ class DriverSelectorOperator(DriverManager_DriverOp, Operator):
             setattr(driver, 'is_open', not is_open) # REFACTOR
             if driver.is_open:
                 #dm.edit_driver = driver
-                driver.set_edit_driver_gui(scene, create=True)
+                #driver.set_edit_driver_gui(scene, create=True)
+                driver.set_edit_driver_gui(scene)
                 #dm.set_edit_driver_gui(context, create=True)
                 return {'FINISHED'}
 
@@ -829,6 +843,13 @@ class RemoveDriverVarOperator(DriverManager_DriverOp, Operator):
             channels, args = get_driver_settings(fcurve)
             if self.varname not in channels:
                 return {'FINISHED'}
+            # remove the channel if one exists for it.
+            channel = gui.channels.get(self.varname)
+            if channel is not None:
+                channel.driver_remove("value")
+                index = gui.channels.find(channel.name)
+                gui.channels.remove(index)
+
             channels.pop(channels.index(self.varname))
 
             d.expression = driver_expr(d.expression, channels, args)

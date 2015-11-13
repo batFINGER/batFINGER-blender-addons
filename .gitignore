@@ -60,5 +60,5 @@ target/
 # Vim backups
 *.*~
 .*~
-*.swp
-.*.swp
+*.sw*
+.*.sw*

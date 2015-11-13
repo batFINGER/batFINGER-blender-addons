@@ -235,15 +235,17 @@ class SoundDriver():
         return obj.drivers.get("DM_%d" % self.index)
 
     def set_edit_driver_gui(self, scene, create=False):
+        #create = False
         self._setting_channels = True
         col = getattr(scene.driver_objects, self.collection_name, None)
         ed = col.get(self.object_name, None)
-        if ed is None and create:
-
+        if ed is None:
+            create=True
             ed = col.add()
             ed.name = self.object_name
 
-        driver_gui = ed.get("DM_%d" % (self.index), None)
+        driver_gui = ed.drivers.get("DM_%d" % (self.index), None)
+
         if driver_gui is None:
             driver_gui = ed.drivers.add()
             driver_gui.name = "DM_%d" % (self.index)
@@ -285,24 +287,29 @@ class SoundDriver():
                 cn = a["channel_name"]
                 channels = a["Channels"]
                 chs = [ch for ch in driver_gui.channels if ch.name.startswith(cn)]
+                '''
                 exist = len(chs) == channels
                 if not exist:
                     for ch in chs:
                         driver_gui.channels.remove(ed.channels.find(ch.name))
+                '''
                 driver = self.fcurve.driver
-                if len(chs) != channels:
-                    for i in range(0, channels):
-                        channel = chs[i] if exist else driver_gui.channels.add()
-                        channel.name = "%s%d" % (cn, i)
-                        if channel.name in driver.variables.keys():
-                            dvar = driver.variables[channel.name]
-                            if dvar.targets[0].id == cs:
-                                channel.value = True
-                            else:
-                                # variable there but with other speaker alert
-                                pass
+                for i in range(0, channels):
+                    channel_name = "%s%d" % (cn, i)
+                    channel = driver_gui.channels.get(channel_name)
+                    if channel is None and channel_name in driver.variables.keys():
+                        channel = driver_gui.channels.add()
+                        channel.name = channel_name
+                        dvar = driver.variables[channel.name]
+                        if dvar.targets[0].id == cs:
+                            channel.value = True
                         else:
-                            channel.value = False
+                            # variable there but with other speaker alert
+                            pass
+                    '''
+                    else:
+                        channel.value = False
+                    '''
 
         
         self._setting_channels = False
@@ -528,7 +535,6 @@ class SoundDriver():
             input_ = l[1]
             node = l[0]
 
-        debug.print("NIV", node, input_, value, self.data_path)
         node = self.driven_object.path_resolve(node) # REFACTO
         row = layout.row() # REFACTO
         row.label(node.rna_type.identifier + str(l)) # REFACTO
@@ -1011,7 +1017,7 @@ class SoundDriver():
             row.prop(target, "id_type", text="")
             row.prop(target, "id", text="")
             if var.type in ['TRANSFORMS', 'LOC_DIFF', 'ROTATION_DIFF']:
-                if target.id and target.id.type == 'ARMATURE':
+                if target.id and getattr(target.id, "type", None) == 'ARMATURE':
                     layout.prop_search(target,
                                        "bone_target",
                                        target.id.data,
@@ -1208,6 +1214,10 @@ class DriverManager():
                 d.fcurve.driver.is_valid = False
         # clear the drivers list
         self._all_drivers_list.clear()
+        for d in self._dummies:
+            if d.fcurve:
+                d.fcurve.driver_remove(d.data_path)
+                # and the collection too
 
         return None
 
