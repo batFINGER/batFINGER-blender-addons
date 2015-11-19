@@ -85,6 +85,19 @@ class SoundActionMethods:
     #icons = ['BLANK1', 'CHECKBOX_DEHLT', 'MESH_PLANE', 'ERROR']
     icons = ['BLANK1', 'CHECKBOX_DEHLT', 'MESH_PLANE', 'OUTLINER_OB_LATTICE']
     icontable = []
+    vismode = 'NONE'
+
+    @classmethod
+    def poll(cls, context):
+
+        if not hasattr(context, "speaker"):
+            return False
+
+        speaker = getSpeaker(context)
+        action = getAction(speaker)
+
+        return (context.speaker and speaker and action\
+                and cls.vismode in speaker.vismode)
 
     def drawnormalise(self, context):
         layout = self.layout
@@ -418,20 +431,20 @@ class SoundVisualiserPanel(SoundActionMethods, Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "data"
+    vismode = 'VISUAL'
     #bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
-
         speaker = getSpeaker(context)
         if speaker is None:
             return False
 
         if context.space_data.pin_id is not None:
             if context.space_data.pin_id == speaker:
-                return 'VISUAL' in speaker.vismode
+                return cls.vismode in speaker.vismode
 
-        return (context.object.data == speaker and 'VISUAL'
+        return (context.object.data == speaker and cls.vismode
                 in speaker.vismode)
 
     def draw_header(self, context):
@@ -490,15 +503,8 @@ class SoundActionPanel(SoundActionMethods, Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "data"
+    vismode = 'ACTION'
     #bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        speaker = getSpeaker(context)
-        action = getAction(speaker)
-
-        return (speaker and action\
-                and 'ACTION' in speaker.vismode)
 
     def SoundActionMenu(self, context, speaker=None,
                         action=None, has_sound=True):
@@ -676,7 +682,6 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
             '''
             box = layout.box()
             if len(action.fcurves):
-                self.draw_progress_slider(context)
                 row = box.row(align=False)
                 i = getattr(self, "channel", 0)
                 fc = action.fcurves[i]
@@ -693,7 +698,6 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
             box = layout.box()
 
             if len(self.bake_times):
-                self.draw_progress_slider(context)
                 row = box.row(align=False)
                 i = getattr(self, "channel", 0)
                 fc = action.fcurves[i]
@@ -1693,7 +1697,17 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         action = speaker.animation_data.action
         if action:
             speaker.animation_data.action = None
-            bpy.data.actions.remove(action)
+            del(action["wavfile"])
+            del(action["channel_name"])
+            del(action["Channels"])
+            for t in speaker.animation_data.nla_tracks:
+                for s in t.strips:
+                    if s.action == action:
+                        #remove track
+                        speaker.animation_data.nla_tracks.remove(t)
+                        break
+            if not action.users:
+                bpy.data.actions.remove(action)
 
     def cancel(self, context):
         if self.view3d is not None:
@@ -1704,6 +1718,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         BakeSoundPanel.baking = False
         context.area.header_text_set()
         context.window_manager.event_timer_remove(self._timer)
+        print("BAKING CANCELLED.....................")
         return {'CANCELLED'}
 
 
