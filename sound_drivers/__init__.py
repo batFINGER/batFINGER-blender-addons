@@ -61,7 +61,7 @@ else:
 
 import bpy
 from bpy.types import  AddonPreferences
-from bpy.props import StringProperty, BoolProperty
+from bpy.props import StringProperty, BoolProperty, IntProperty
 from bpy.utils import register_class, unregister_class
 
 
@@ -89,6 +89,12 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             description="folder where audio files are",
             subtype='DIR_PATH',
             )
+    driver_manager_update_speed = IntProperty(
+                                  name="Driver Manager Update Speed",
+                                  min=1,
+                                  max=100,
+                                  description="Update timer, lower value = faster updates, higher value slow self update use refresh",
+                                  default=10)
 
     def draw(self, context):
         def icon(test):
@@ -110,6 +116,7 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             row = layout.row()
             row.label("Warning Will not work unless Auto Scripts Enabled",
                       icon='ERROR')
+            return
         row = layout.row()
         row.label("SoundDrive in Driver Namespace", icon=icon("SoundDrive" in
                                                               dns))
@@ -119,28 +126,34 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         test = "DriverManager" in dns
         row = layout.row()
         row.label("DriverManager Started", icon=icon(test))
+        row = layout.row()
         if not test:
-            row = layout.row()
             row.operator("drivermanager.update")
+        else:
+            row.prop(self, "driver_manager_update_speed", slider=True)
         row = layout.row()
         row = layout.prop(self, "midi_support")
-        row = layout.row()
-        row.prop(self, "smf_dir")
-        row = layout.row()
-        op = row.operator("wm.url_open", icon='INFO', text="GitHub PySMF Project (Cython)")
-        op.url="https://github.com/dsacre/pysmf"
-        row = layout.row()
-        if "smf" in locals():
-            row.label("SMF IMPORTED OK...", icon='FILE_TICK')
+        # midi support
+        if self.midi_support:
+            row = layout.row()
+            row.prop(self, "smf_dir")
+            row = layout.row()
+            op = row.operator("wm.url_open", icon='INFO', text="GitHub PySMF Project (Cython)")
+            op.url="https://github.com/dsacre/pysmf"
+            row = layout.row()
+            if "smf" in locals():
+                row.label("SMF IMPORTED OK...", icon='FILE_TICK')
 
-        else:
-            try:
-                import sys
-                sys.path.append(self.smf_dir)
-                import smf
-                row.label("SMF IMPORTED OK", icon='FILE_TICK')
-            except:
-                row.label("SMF FAILED", icon ='ERROR')
+            else:
+                try:
+                    import sys
+                    sys.path.append(self.smf_dir)
+                    import smf
+                    row.label("SMF IMPORTED OK", icon='FILE_TICK')
+                except:
+                    row.label("SMF FAILED", icon ='ERROR')
+
+        # end midi support
         row = layout.row()
         row.prop(self, "audio_dir", icon='SOUND')
         row = layout.row()
