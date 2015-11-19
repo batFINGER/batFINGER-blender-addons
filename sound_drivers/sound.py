@@ -1727,7 +1727,7 @@ def register():
                 ("SFX", "SFX", "Sound Effects"),
                 ("MUSIC", "MUSIC", "Music"),
                 ("VOICE", "VOICE", "Voice"),
-                ("MIDI", "MIDI", "Midi"),
+                #("MIDI", "MIDI", "Midi"),
                 ),
                 name="type",
                 default="SOUND",
