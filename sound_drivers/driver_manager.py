@@ -1080,9 +1080,11 @@ class DriverManager():
         if None in fcurves:
             self.get_all_drivers_list()
 
-    def check_added_drivers(self, obj):
+    def check_added_drivers(self, obj, context=bpy.context):
+        prefs = context.user_preferences.addons['sound_drivers'].preferences
+        us = prefs.driver_manager_update_speed
         self.ticker += 1
-        if self.ticker < 20: # REFACTO FOR UPDATE SPEED
+        if self.ticker <= us: # REFACTO FOR UPDATE SPEED
             return False
         self.ticker = 0
         if obj is None:
