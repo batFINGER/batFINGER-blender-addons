@@ -335,7 +335,7 @@ class DriverCollectionPanel(DriverPanel):
             ob = context.object.active_material
             keys = [ob.name] if ob is not None else []
         elif self.collection.startswith("shape_keys"):
-            ob = context.object.data.shape_keys
+            ob = getattr(context.object.data, "shape_keys", None)
             keys = [ob.name] if ob is not None else []
         else:
             #dic = dm.get_collection_dic(type(self).collection)
