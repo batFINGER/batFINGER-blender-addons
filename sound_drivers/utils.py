@@ -130,10 +130,8 @@ def icon_from_bpy_datapath(path):
     if len(sp) < 3:
         return 'BLANK1'
     
-    print("SPP>>>", sp, sp[2])
     sp =  sp[2].split('[')
 
-    print("SPP>>>", sp)
     col = sp[-1].split('[')[0]
     #collection name will be index
     if col not in bpy_collections\
