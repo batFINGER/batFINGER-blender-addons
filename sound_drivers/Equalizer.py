@@ -702,7 +702,7 @@ def register():
     #bpy.utils.register_class(ModalTimerOperator)
     bpy.utils.register_class(OLDSoundVisualiserPanel)
     bpy.app.handlers.load_post.append(InitSoundTools)
-    InitSoundTools(None)
+    #InitSoundTools(None)
 
 
 def unregister():
