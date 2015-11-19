@@ -3,7 +3,6 @@ from bpy.utils import register_class, unregister_class
 from bpy.props import BoolProperty
 from sound_drivers.utils import get_icon, bpy_collections, icon_from_bpy_datapath
 
-from sound_drivers.utils import get_icon, bpy_collections, icon_from_bpy_datapath
 
 class DRIVER_UL_driven_objects(bpy.types.UIList):    
     use_filter_empty = BoolProperty(name="Filter Empty", default=False, options=set(),
@@ -17,9 +16,10 @@ class DRIVER_UL_driven_objects(bpy.types.UIList):
                                                      description="Reverse name filtering")
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, filter_flg):
         ob = data
-        slot = item
         self.use_filter_sort_alpha = True
-        coll = active_propname.split("_")[1]
+
+        coll = active_propname.strip("active_index")
+
         collection = getattr(bpy.data, coll)
         obj = collection.get(item.name) 
                
@@ -333,6 +333,9 @@ class DriverCollectionPanel(DriverPanel):
             keys = [ob.name]
         elif self.collection.startswith("mat"):
             ob = context.object.active_material
+            keys = [ob.name] if ob is not None else []
+        elif self.collection.startswith("shape_keys"):
+            ob = context.object.data.shape_keys
             keys = [ob.name] if ob is not None else []
         else:
             #dic = dm.get_collection_dic(type(self).collection)

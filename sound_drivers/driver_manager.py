@@ -27,10 +27,8 @@ class SoundDriver():
         action = ob.animation_data.action
         if action is None:
             return False
-        for f in action.fcurves:
-            if f.data_path == self.data_path and f.array_index == self.array_index:
-                return True
-        return False
+
+        return action.fcurves.find(self.data_path, self.array_index) is not None
 
     is_baked = property(get_is_baked)
 
@@ -191,13 +189,22 @@ class SoundDriver():
                 op = leftcol.operator("drivermanager.demonkify", text="",
                                       icon='MONKEY')
                 op.driver_index = d.index
-            op = leftcol.operator("editdriver.bake2fcurves",
-                             text="", icon='FCURVE')
-            op.dindex = d.index
 
-            op = leftcol.operator("driver.copy_to_selected_objects",
-                             text="", icon='PASTEDOWN')
+            if d.is_baked:
+                option = 'UNBAKE'
+                icon = 'FCURVE'
+            else:
+                option = 'BAKE'
+                icon = 'ACTION'
+
+            op = leftcol.operator("editdriver.bake2fcurves",
+                                  text="", icon=icon)
             op.dindex = d.index
+            
+            if len(context.selected_objects) > 1:
+                op = leftcol.operator("driver.copy_to_selected_objects",
+                             text="", icon='PASTEDOWN')
+                op.dindex = d.index
 
             rightcol = row.column()
 
@@ -1389,9 +1396,6 @@ class DriverManager():
         space = context.space_data
         if space.pin_id:
             active_pose_bone = space.pin_id
-            print("PINID", active_pose_bone)
-            print(context.active_pose_bone)
-            print(context.bone)
 
         constraints = context.pose_bone.constraints.values()
 
@@ -1433,19 +1437,30 @@ class DriverManager():
         if collection == "particles":
             obj = getattr(obj, "settings", None)
 
+        '''
         elif panel_context == "bone":
             print("BONE", obj)
         elif panel_context == "pose_bone":
             print("BONE", obj)
 
+        '''
         space = context.space_data
 
         if space.pin_id:
             obj = space.pin_id
-            print("PINID BONE", obj)
+            #print("PINID BONE", obj)
+
+        if collection == "shape_keys":
+            if hasattr(obj, "shape_keys"):
+                obj = obj.shape_keys
+            if hasattr(obj, "data"):
+                obj = obj.data.shape_keys
+            else:
+                obj = getattr(context.object.data, "shape_keys", None)
 
         if obj is None:
             return
+
         dm = self
         
         layout = panel.layout
@@ -1482,7 +1497,7 @@ class DriverManager():
 
     def _PanelInvader(self, remove_only=False):
         def SD__draw(panel, context):
-            panel.layout.label("TEST")
+            #panel.layout.label("TEST")
             self.panel_draw(panel, context)
 
         default_dic = {"panels": [],
@@ -1514,6 +1529,12 @@ class DriverManager():
                                 "collection": "meshes",
                                 "panels":["DATA_PT_context_mesh"],
                                 "context": "mesh",
+                               },
+                     "shape_keys": {
+                                "collection": "shape_keys",
+                                "panels":["DATA_PT_shape_keys"],
+                                "context": "mesh",
+                                "draw": "prepend", # will prepend
                                },
                      "armatures": {
                                 "collection": "armatures",
