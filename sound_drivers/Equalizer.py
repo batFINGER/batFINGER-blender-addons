@@ -702,7 +702,9 @@ def register():
     #bpy.utils.register_class(ModalTimerOperator)
     bpy.utils.register_class(OLDSoundVisualiserPanel)
     bpy.app.handlers.load_post.append(InitSoundTools)
-    #InitSoundTools(None)
+    if ("GetLocals" not in bpy.app.driver_namespace 
+            or "SoundDrive" not in bpy.app.driver_namespace):
+        InitSoundTools(None)
 
 
 def unregister():
