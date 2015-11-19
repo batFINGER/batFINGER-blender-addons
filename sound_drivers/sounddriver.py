@@ -342,6 +342,7 @@ def register_props():
     # remove it for reload same file.
     # unload should be called from pre load handler
     # SOUND_DRIVERS_unload(dummy)
+    '''
     print("Setting Up Driver Manager")
 
     dm = bpy.app.driver_namespace.get("DriverManager")
@@ -351,6 +352,7 @@ def register_props():
     else:
         dm.edit_driver = None
 
+    '''
     prop_dic = {"drivers": CollectionProperty(type=GUIDriver)}
 
     GUIDrivers = type('GUIDrivers', (PropertyGroup,), prop_dic)
@@ -395,7 +397,7 @@ def SOUND_DRIVERS_load(dummy):
 
 @persistent
 def SOUND_DRIVERS_unload(dummy):
-    debug.print("SPEAER_TOOLS_unload")
+    debug.print("SPEAKER_TOOLS_unload")
 
     try:
         #global dm
@@ -403,6 +405,9 @@ def SOUND_DRIVERS_unload(dummy):
         if dm:
             dm.clear()
             debug.print("Clearing Driver Manager")
+        if hasattr(dummy, "driver_objects"):
+            for x in dummy.driven_objects:
+                x.clear()
     except:
         debug.print("PROBLEM UNLOADING DM")
         pass

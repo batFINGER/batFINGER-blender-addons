@@ -660,9 +660,6 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
         space = context.space_data
         layout = self.layout
 
-
-
-
         if self.baking:
             action = self.action
             #self.draw_progress_slider(context)
@@ -692,7 +689,9 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
                 sub = row.row()
                 sub.alignment = 'RIGHT'
                 sub.template_node_socket(color=color)
+
             box = layout.box()
+
             if len(self.bake_times):
                 self.draw_progress_slider(context)
                 row = box.row(align=False)
@@ -710,7 +709,15 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
                 row = box.row(align=False)
                 row.label(BakeSoundPanel.report)
                 row = box.row()
-                row.label(" %02d:%02d:%02d" % splittime(self.bake_times[-1]))
+                row.label("Baked in: %02d:%02d.%02d" % splittime(self.bake_times[-1]))
+                row = box.row()
+                te = sum(self.bake_times)
+                abt = te / len(self.bake_times)
+                channels = self.action.get("Channels", 0)
+                tr = (channels - len(self.bake_times)) * abt
+
+                row.label("Elapsed: %02d:%02d.%02d" % splittime(te))
+                row.label("Remaining: %02d:%02d.%02d" % splittime(tr))
             #row.column_flow(columns=10, align=True)
 
             return
