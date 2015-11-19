@@ -589,7 +589,7 @@ class SelectScreenAreaOperator(SupportedAreas, Operator):
             # toggle through the supported areas
             if area.type in screen_areas:
                 i = screen_areas.index(area.type)
-                i = i + 1
+
             if i >= len(screen_areas):
                 i = 0
 
