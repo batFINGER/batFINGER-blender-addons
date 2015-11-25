@@ -687,3 +687,12 @@ def copy_driver(from_driver, target_fcurve):
 def interp(value, f, t):
     m = (value - f[0]) / (f[1] - f[0])
     return t[0] + m * (t[1] - t[0])
+
+def remove_draw_pend(paneltype, prefix):
+    draw_funcs = [f for f in paneltype._dyn_ui_initialize()
+                  if f.__name__.startswith(prefix)]
+    
+    for f in draw_funcs:
+        paneltype.remove(f)
+
+    

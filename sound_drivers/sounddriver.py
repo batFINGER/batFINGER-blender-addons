@@ -12,10 +12,14 @@ from bpy.props import StringProperty, PointerProperty, BoolProperty,\
 
 from bpy.types import PropertyGroup
 
-from sound_drivers.utils import getSpeaker, getAction, \
-    remove_handlers_by_prefix,\
-    get_driver_settings,\
-    driver_expr, bpy_collections
+from sound_drivers.utils import (getSpeaker,
+                                 getAction,
+                                 remove_handlers_by_prefix,
+                                 get_driver_settings,
+                                 driver_expr,
+                                 bpy_collections,
+                                 remove_draw_pend,
+                                 )
 
 from sound_drivers.EqMenu import main
 from sound_drivers import debug
@@ -1126,6 +1130,12 @@ def register():
 
     # set up the driver manager
     #bpy.app.driver_namespace["DriverManager"] = None
+    def dm_start_button(self, context):
+        if getattr(context, "driver_manager", None) is None:
+            self.layout.operator("drivermanager.update", text="", icon='DRIVER')
+    
+    
+    bpy.types.PROPERTIES_HT_header.prepend(dm_start_button)
 
 
 def unregister():
@@ -1148,6 +1158,7 @@ def unregister():
     unregister_class(DriverRemoveModifier)
     # We don't want these hanging around.
     remove_handlers_by_prefix('SOUND_DRIVERS_')
+    remove_draw_pend(bpy.types.PROPERTIES_HT_header, "dm_")
 
     #global dm
     dm = bpy.app.driver_namespace.get("DriverManager")

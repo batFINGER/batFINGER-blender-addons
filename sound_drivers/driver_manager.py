@@ -6,6 +6,7 @@ from sound_drivers.utils import (bpy_collections,
                                  copy_driver,
                                  getAction,
                                  getSpeaker,
+                                 remove_draw_pend,
                                 )
 from sound_drivers import debug
 from mathutils import Vector, Color, Euler, Quaternion
@@ -1643,16 +1644,11 @@ class DriverManager():
             draw = pdic.setdefault("draw", default_dic["draw"])
             search = pdic.setdefault("search", default_dic["search"])
             for p in panels:
-                
                 pt = getattr(bpy.types, p, None)
                 if pt is None:
                     debug.print(p, "PANEL is not registered")
                     continue
-                draw_funcs = [f for f in pt._dyn_ui_initialize()
-                              if f.__name__.startswith("SD__")]
-    
-                for f in draw_funcs:
-                    pt.remove(f)
+                remove_draw_pend(pt, "SD_")
                 if not remove_only:
                     f = getattr(pt, draw)
                     setattr(pt, "collection", collection)
