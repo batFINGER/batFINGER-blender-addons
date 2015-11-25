@@ -404,4 +404,6 @@ def unregister():
         unregister_class(getattr(bpy.types, "SD_%s_ui_list" % c))
     #bpy.utils.unregister_class(DriverCollectionPanel)
     unregister_class(EditDriverPanel)
+    # Need to remove all of these
+    del bpy.types.Context.driver_manager
 
