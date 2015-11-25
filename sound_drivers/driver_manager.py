@@ -790,9 +790,15 @@ class SoundDriver():
         if self.fcurve is None:
             layout.label(text="Driver Problems")
             return None
+        if self.is_baked:
+            layout.label("BAKED", icon='ACTION')
+            #return None
         driver = self.fcurve.driver
         row = layout.row(align=True)
-        row.label("Driver Settings", icon='DRIVER')
+        if self.is_baked:
+            row.label("Keyframe", icon='ACTION')
+        else:
+            row.label("Driver Path", icon='DRIVER')
         sub = row.row()
         sub.enabled = False
         sub.prop(self.fcurve, "data_path", text="", icon="RNA")
@@ -802,8 +808,7 @@ class SoundDriver():
             sub.prop(self.fcurve, "array_index", text="")
 
         box = layout.box()
-        row = box.row()
-        row.label("BAKED" + str(self.is_baked))
+        box.enabled = not self.is_baked
         row = box.row(align=True)
         row.prop(driver, "type", text="")
         #row = box.row()
