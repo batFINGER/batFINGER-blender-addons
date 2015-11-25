@@ -802,6 +802,8 @@ class SoundDriver():
             sub.prop(self.fcurve, "array_index", text="")
 
         box = layout.box()
+        row = box.row()
+        row.label("BAKED" + str(self.is_baked))
         row = box.row(align=True)
         row.prop(driver, "type", text="")
         #row = box.row()
@@ -913,11 +915,17 @@ class SoundDriver():
                             #col2.template_node_view(ntree, node, input)
                         else:
                             try:
+                                # need a nicer path splitting routine
                                 mo = target.id.path_resolve(target.data_path)
-
-                                col2.prop(target.id,
+                                if target.data_path.endswith(".value"):
+                                    mo = target.id.path_resolve(target.data_path.strip(".value"))
+                                    col2.prop(mo, "value")
+                                elif target.id.data_path.count(".") == 1:
+                                    col2.prop(target.id,
                                           target.data_path,
                                           slider=True)
+                                else:
+                                    col2.label("%s = %.2f" % (dp, mo))
                             except:
                                 col2.label("%s = %.2f" % (dp, mo))
                     except:
@@ -1225,7 +1233,11 @@ class DriverManager():
         self._all_drivers_list.clear()
         for d in self._dummies:
             if d.fcurve:
-                d.fcurve.driver_remove(d.data_path)
+                #XXXX
+                print(d.driven_object, d.prop)
+                if not d.driven_object.driver_remove(d.prop):
+                    #try  # possibly going to need try / catch here.
+                    d.fcurve.driver_remove(d.data_path)
                 # and the collection too
 
         return None
