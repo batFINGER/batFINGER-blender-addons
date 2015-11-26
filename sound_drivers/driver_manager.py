@@ -7,6 +7,7 @@ from sound_drivers.utils import (bpy_collections,
                                  getAction,
                                  getSpeaker,
                                  remove_draw_pend,
+                                 split_path
                                 )
 from sound_drivers import debug
 from mathutils import Vector, Color, Euler, Quaternion
@@ -792,7 +793,9 @@ class SoundDriver():
             layout.label(text="Driver Problems")
             return None
         if self.is_baked:
-            layout.label("BAKED", icon='ACTION')
+            row = layout.row()
+            row.label("BAKED")
+            row.label(self.fcurve.id_data.animation_data.action.name, icon='ACTION')
             #return None
         driver = self.fcurve.driver
         row = layout.row(align=True)
@@ -922,18 +925,18 @@ class SoundDriver():
                         else:
                             try:
                                 # need a nicer path splitting routine
+                                path =  split_path(target.data_path)
                                 mo = target.id.path_resolve(target.data_path)
-                                if target.data_path.endswith(".value"):
-                                    mo = target.id.path_resolve(target.data_path.strip(".value"))
-                                    col2.prop(mo, "value")
-                                elif target.id.data_path.count(".") == 1:
-                                    col2.prop(target.id,
-                                          target.data_path,
+                                if len(path) > 1:
+                                    mo = target.id.path_resolve(".".join(path[:-1]))
+
+                                    col2.prop(mo,
+                                          path[-1],
                                           slider=True)
                                 else:
-                                    col2.label("%s = %.2f" % (dp, mo))
+                                    col2.label("YY%s = %.2f" % (dp, mo))
                             except:
-                                col2.label("%s = %.2f" % (dp, mo))
+                                col2.label("XX%s = %.2f" % (dp, mo))
                     except:
                         col2.label("ERROR")
                 elif var.type == 'TRANSFORMS':

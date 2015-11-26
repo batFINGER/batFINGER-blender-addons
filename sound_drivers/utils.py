@@ -689,10 +689,47 @@ def interp(value, f, t):
     return t[0] + m * (t[1] - t[0])
 
 def remove_draw_pend(paneltype, prefix):
+    '''
+    remove all functions with name beginning with prefix (pre/ap)pended to paneltype
+    '''
+
     draw_funcs = [f for f in paneltype._dyn_ui_initialize()
                   if f.__name__.startswith(prefix)]
     
     for f in draw_funcs:
         paneltype.remove(f)
 
+def split_path(data_path):
+    '''
+    Split a data_path into parts
+    '''
+    if not len(data_path):
+        return []
+     # remove all collection names   
+    match = re.findall(r'\[\"(.*?)\"\]\.', data_path)
+
+    namedic = {}
+    for i, m in enumerate(match):
+        key = "Collection___NAME________%d" % i # surely not lol.
+        data_path = data_path.replace(m, key, 1)
+        namedic[key] = m
+
+    parts = data_path.rpartition(".")
+    props = []
+    while parts[0] != parts[1] != '':
+        dp = parts[0]
+        props.append(parts[2])
+        parts = dp.rpartition(".")
+
+    props.append(parts[2])
+
+    # replace the names
+    propstring = ",".join(props)
+    for key, name in namedic.items():
+        propstring = propstring.replace(key, name)
+    props = propstring.split(",")
+
+    # reverse list
+    props.reverse()
+    return props
     
