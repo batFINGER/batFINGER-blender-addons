@@ -82,7 +82,6 @@ class BGLWidget(SupportedAreas):
                     if context.region.id == r.id:
                         break
 
-            print("QVRVD")
             return r, context.space_data.region_quadviews[i]
 
 
@@ -205,7 +204,6 @@ class BGLWidget(SupportedAreas):
         '''
         pts = []
         region, rv3d = self.view3d_find(context)
-        print(region, rv3d)
         if region is not None:
             pts = [location_3d_to_region_2d(region, rv3d, p) for p in points]
 
@@ -873,7 +871,6 @@ def reg_screen_action_bgl():
     bpy.utils.register_class(SD_AreaSettings)
     bpy.types.Screen.sound_driver_areas = CollectionProperty(type=SD_AreaSettings)
     bpy.types.Context.sound_vis_areas = property(get_sda_current)
-    print(SD_AreaSettings)
     
 
 def register():

@@ -647,7 +647,6 @@ class Bake2FCurveOperator(DriverManager_DriverOp, Operator):
             dm = context.driver_manager
             return [d for d in dm.all_drivers_list]
         return [self.driver]
-        return [dm.edit_driver]
 
     chunks = 10 # split into 10 parts
     chunks = 4
@@ -694,6 +693,7 @@ class Bake2FCurveOperator(DriverManager_DriverOp, Operator):
         obj = driver.id_data
         if obj.animation_data.action is not None:
             raction = obj.animation_data.action
+
             fcurves = [fcurve for fcurve in raction.fcurves
                        if fcurve.data_path == driver.data_path
                        and fcurve.array_index == driver.array_index]
