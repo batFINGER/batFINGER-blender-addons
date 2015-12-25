@@ -16,6 +16,7 @@ from sound_drivers.utils import get_driver_settings,\
                 validate_channel_name, unique_name, splittime,\
                 get_context_area, replace_speaker_action
 
+# validate_channel_name phase out
 from sound_drivers.presets import notes_enum, note_from_freq,\
                 freq_ranges, shownote
 
@@ -118,7 +119,6 @@ class SoundActionMethods:
         scene = context.scene
 
         # Create a simple row.
-        layout.label(text=" Simple Row:")
 
         row = layout.row()
         '''
@@ -129,9 +129,9 @@ class SoundActionMethods:
         row.context_pointer_set("region", context.screen.areas[0].regions[-1])
         op = row.operator("graph.clean")
         '''
-        op = row.operator("soundaction.tweak")
+        op = row.operator("soundaction.tweak", text="CLEAN")
         op.type = 'CLEAN'
-        op = row.operator("soundaction.tweak")
+        op = row.operator("soundaction.tweak", text="SMOOTH")
         op.type = 'SMOOTH'
         
         row = layout.row()
@@ -192,11 +192,11 @@ class SoundActionMethods:
         row = layout.row(align=True)
         sub = row.row()
         sub.scale_x = 2
-        op = sub.operator("soundaction.copy", text="Copy to Channel")
 
-        row.prop(bakeoptions, "channel_name", text="")
-
-        op.new_channel_name = bakeoptions.channel_name
+        channels = [c for sp in scene.objects if sp.type == 'SPEAKER' for c in sp.data.channels]
+        new_channel_name = unique_name(channels, bakeoptions.channel_name)
+        op = sub.operator("soundaction.copy", text="Copy to Channel %s" % new_channel_name)
+        op.new_channel_name = new_channel_name
         '''
         row = layout.row()
         op = row.operator("sound.bake_animation")
@@ -724,47 +724,7 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
                 row.label("Remaining: %02d:%02d.%02d" % splittime(tr))
             #row.column_flow(columns=10, align=True)
 
-            return
-            # GOING TO LOSE THIS
-            if action:
-                box = layout.box()
-                #box.scale_y = 0.5
-                for i in range(bakeoptions.channels):
-                    c = i % 10
-                    r = i // 10
-                    if not c:
-                        #row = layout.row(align=True)
-                        row = box.row()
-                        row.scale_y = 0.5
-
-                        cf = row.column_flow(columns=11, align=False)
-                        cf.scale_y = 0.5
-                        #cf.alignment = 'RIGHT'
-                        #cols = [row.column() for i in range(9)]
-
-                    '''
-                    if not c:
-                        row = layout.row()
-                        row.column_flow(columns=10, align=True)
-                    '''
-
-                    lb = cf.column()
-                    status = self.status[i]
-                    if not status:
-                        lb.label(text="", icon='CHECKBOX_DEHLT')
-                    elif status == 1:
-                        lb.label(text="", icon='MESH_PLANE')
-                    elif status == 99:
-                        lb.label(text="", icon='ERROR')
-
-            row = box.row()
-            row.scale_y = 2
-            row = layout.row(align=True)
-            row.prop(bakeoptions, "minf")
-            row.prop(bakeoptions, "maxf")
-
-            return
-
+            return None
 
 
         speaker = getSpeaker(context)
@@ -827,24 +787,27 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
         row = layout.row()
         row.menu("sound.music_notes")
         '''
+        channels = [c for sp in context.scene.objects if sp.type == 'SPEAKER' for c in sp.data.channels]
+        channel_name = unique_name(channels, "AA")
         row = layout.row()
-        row.label("Action (%s)" % sound.name, icon='ACTION')
+        row.label("%s_%s_%s" % (bakeoptions.sound_type, channel_name, sound.name), icon='ACTION')
         abox = layout.box()
         arow = abox.row(align=True)
         arow.prop(bakeoptions, "sound_type", text="")
-        arow.prop(bakeoptions, "action_name", text="")
-        '''
-        #type will be moved from sound to bake type.
-        row = layout.row()
-        row.prop(sound, "type", text=sound.type)
-        '''
+
+        arow.label(channel_name)
+        #arow.prop(bakeoptions, "channel_name", text="")
+        arow.label(sound.name)
+        #arow.prop(bakeoptions, "action_name", text="") # REFACTO OUT
 
         row = layout.row()
+        '''
         if not validate_channel_name(context):
             row.label("Channel in USE or INVALID", icon='ERROR')
             row.alert = True
             row = layout.row()
 
+        '''
         #col.scale_x = row.scale_y = 2
 
         row.label("Channel")
@@ -852,7 +815,7 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
         box = row.box()
         #col.scale_x = row.scale_y = 2
         brow = box.row(align=True)
-        brow.prop(bakeoptions, "channel_name", text="Name")
+        #brow.prop(bakeoptions, "channel_name", text="Name")
         sub = brow.row()
         sub.prop(bakeoptions, "channels", text="")
         sub.enabled = bakeoptions.sound_type != 'MUSIC'
@@ -884,7 +847,8 @@ class SoundVisMenu(Menu):
     vismode = 'VISUAL'
 
     def draw(self, context):
-        speaker = context.scene.speaker
+        speaker = getSpeaker(context)
+        #speaker = context.scene.speaker
         #if SoundVisMenu.vismode in ["VISUAL", "SOUND", "DRIVERS"]:
         if True:
             actions = [action for action in bpy.data.actions
@@ -893,7 +857,7 @@ class SoundVisMenu(Menu):
 
             for action in actions:
                 op = self.layout.operator("soundaction.change",
-                          text="%s %s"\
+                          text="%s   %s"\
                           % (action["channel_name"], action.name))
                 op.action = action.name
 
@@ -1025,7 +989,8 @@ class ChangeSoundAction(Operator):
     action = StringProperty(default="")
 
     def execute(self, context):
-        speaker = context.scene.speaker
+        #speaker = context.scene.speaker
+        speaker = getSpeaker(context)
         if not speaker:
             return {'CANCELLED'}
         soundaction = bpy.data.actions.get(self.action)
@@ -1050,18 +1015,19 @@ class CopySoundAction(SoundActionBaseOperator, Operator):
 
     @classmethod
     def poll(cls, context):
-        return (context.active_object is not None
-                and validate_channel_name(context))
+        return (context.active_object is not None)
 
     def execute(self, context):
         speaker = getSpeaker(context)
         original_action = speaker.animation_data.action
         newaction = copy_sound_action(speaker, self.new_channel_name)
+        channels = [c for sp in context.scene.objects if sp.type == 'SPEAKER' for c in sp.data.channels]
 
         if newaction is not None:
             speaker.animation_data.action = newaction
             speaker.sound.bakeoptions.channel_name =\
-                    unique_name(speaker.channels, self.new_channel_name)
+                    unique_name(channels, "AA")
+                    #unique_name(channels, self.new_channel_name)
 
             if self.nla_drop:
                 # need to override context to use.. cbf'd
@@ -1079,7 +1045,7 @@ class CopySoundAction(SoundActionBaseOperator, Operator):
 class UnbakeSoundAction(SoundActionBaseOperator, Operator):
     '''Unbake'''
     bl_idname = 'soundaction.unbake'
-    bl_label = 'unBake to Action'
+    bl_label = 'unBake to Key-frames'
     bl_description = 'Unbake to keyframes'
     bl_options = {'UNDO'}
     sd_tweak_type = 'UNBAKE'
@@ -1172,7 +1138,7 @@ class UnbakeSoundAction(SoundActionBaseOperator, Operator):
 
 class ReBakeSoundAction(SoundActionBaseOperator, Operator):
     bl_idname = 'soundaction.rebake'
-    bl_label = 'ReBake to Action'
+    bl_label = 'ReBake to Samples'
     bl_description = 'Resample baked f-curve to a new Action / f-curve'
     bl_options = {'UNDO'}
     sd_tweak_type = 'REBAKE'
@@ -1307,7 +1273,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         
         if context.space_data.pin_id is not None and context.space_data.pin_id != context.scene.objects.active.data:
             return False
-        return validate_channel_name(context)
+        return True
 
     def channel_range(self):
         bakeoptions = self.sound.bakeoptions
@@ -1342,6 +1308,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
 
 
     def modal(self, context, event):
+        context.area.tag_redraw()
         wm = context.window_manager
 
         '''
@@ -1548,6 +1515,8 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         if not (self.sound and self.speaker):
             return {'CANCELLED'}
         bakeoptions = self.sound.bakeoptions
+        channels = [c for sp in context.scene.objects if sp.type == 'SPEAKER' for c in sp.data.channels]
+        bakeoptions.channel_name = unique_name(channels, "AA") # AAAA
         self.retries = []
 
         if self.area_index > -1:
@@ -1582,7 +1551,10 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         elif self.speaker.animation_data.action:
             current_action = self.speaker.animation_data.action
 
-        action = bpy.data.actions.new(bakeoptions.action_name)
+        name = "%s_%s_%s" % (bakeoptions.sound_type, bakeoptions.channel_name, self.sound.name)
+
+        action = bpy.data.actions.new(name)
+
         if current_action:
             #take some settings from last baked
             action.vismode = current_action.vismode
@@ -1683,7 +1655,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         nla_drop(sp, action, 1, "%s %s" %(channel_name, channel_name))
         # normalise to action. This will set the
         action.normalise = 'ACTION'
-        bakeoptions.channel_name = unique_name(sp.channels, channel_name)
+
         if context.scene.speaker is None:
             sp.is_context_speaker = True
 
@@ -1726,7 +1698,6 @@ def get_dm():
     dns = bpy.app.driver_namespace
     dm = dns.get("DriverManager")
     return dm
-
 
 
 def register():
