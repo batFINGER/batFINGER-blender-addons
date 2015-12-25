@@ -450,7 +450,6 @@ def hasparent(obj, parent):
     return False
 
 
-
 def copy_sound_action(speaker, newname):
     '''
     Copy a sound action
@@ -459,7 +458,7 @@ def copy_sound_action(speaker, newname):
     spk = speaker
     original_action = getAction(spk)
     action = original_action.copy()
-
+    action.name = "SOUND_%s_%s" % (newname, speaker.sound.name)
     #spk.animation_data.action = action
     #action.name = 'FX'
     cn = action['channel_name']
@@ -510,14 +509,18 @@ def validate_channel_name(context):
     return valid channel name
     '''
     chstr = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    speakers = [s.data for s in context.scene.objects if s.type == 'SPEAKER']
+    channels = [c for sp in speakers for c in sp.channels]
+
     speaker = getSpeaker(context)
     sound = speaker.sound
     channel_name = sound.bakeoptions.channel_name
 
     flag = channel_name[0] in chstr\
-           and (channel_name.isalpha())\
-           and len(channel_name) == 2\
-           and channel_name not in speaker.channels
+        and (channel_name.isalpha())\
+        and len(channel_name) == 2\
+        and channel_name not in channels
+
     return flag
 
 
