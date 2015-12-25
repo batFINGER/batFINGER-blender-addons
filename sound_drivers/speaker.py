@@ -234,7 +234,8 @@ class OBJECT_OT_speaker_add(bpy.types.Operator, object_utils.AddObjectHelper):
 class SpeakerSelectorOperator(bpy.types.Operator):
     """Edit Driver"""
     bl_idname = "speaker.select_context"
-    bl_label = "Select Context Speaker"
+    bl_label = "Set Context Speaker"
+    bl_description = "Set Context Speaker"
     contextspeakername = StringProperty(default="")
     @classmethod
     def poll(cls, context):
@@ -243,6 +244,7 @@ class SpeakerSelectorOperator(bpy.types.Operator):
         return len(speakers) > 0
 
     def invoke(self, context, event):
+        return self.execute(context)
 
         speaker = bpy.data.speakers.get(self.contextspeakername)
         speaker.is_context_speaker = True
@@ -253,6 +255,9 @@ class SpeakerSelectorOperator(bpy.types.Operator):
         return {'FINISHED'}
 
     def execute(self, context):
+        speaker = bpy.data.speakers.get(self.contextspeakername)
+        if speaker:
+            speaker.is_context_speaker = True
         return {'FINISHED'}
 
     def draw(self, context):
