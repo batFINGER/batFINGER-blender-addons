@@ -211,7 +211,8 @@ def speaker_channels(self, context):
     channels = []
     if hasattr(context.scene, "speaker"):
         channels = getattr(context.scene.speaker, "channels", [])
-    return[(ch, ch, "Drive with %s" % ch, 2*i) for i, ch in enumerate(channels)]
+    print(channels)
+    return[(ch, ch, "Drive with %s%d" % (ch, 2*i)) for i, ch in enumerate(channels)]
 
 def aget(self):
     actions = [a.name for a in bpy.data.actions if "channel_name" in a.keys() and a.get("channel_name") == self.channel]
@@ -223,10 +224,21 @@ def aget(self):
 def gui_type_items(self, context):
     gui_types = [("DRIVER", "", "Standard Driver Settings", 'DRIVER', 1)]
         #("EXPRESSION", "", "Standard Driver Settings", 'FILE_SCRIPT', 16),
+    if len(bpy.data.speakers): # LAZY FIX WITH PROPER
+        gui_types.extend([("SOUNDDRIVER", "", "Sound Driver", 'SOUND', 2)])
     if context.scene.speaker is not None:
-        gui_types.extend([("SOUNDDRIVER", "", "Sound Driver", 'SOUND', 2), ("ACTION", "", "Show Baked Actions", 'ACTION', 4)])
+        gui_types.extend( [("ACTION", "", "Show Baked Actions", 'ACTION', 4)])
         #("VISUALISER_UNIT", "", "Visualiser Unit", 'SEQ_HISTOGRAM', 4),
     return gui_types
+
+def enum_up(self, context):
+    print("XXX", self.gui_types)
+    if 'ACTION' in self.gui_types:
+        if 'SOUNDDRIVER' not in self.gui_types: # is subset
+            print("ADDDDD SOUNDDRIVER")
+            self.gui_types |= {'SOUNDDRIVER'}
+
+    return None
 
 def register_props():
     BPY_COLLECTION_TYPE = type(bpy.data.objects)
@@ -312,6 +324,7 @@ def register_props():
         #default={'DRIVER'},  # default can't be set when items is a func.
         description="Driver Details to Display (Multi Select)",
         options={'HIDDEN', 'ENUM_FLAG'},
+        update=enum_up,
         #update=wonk,
     )
 
@@ -326,10 +339,10 @@ def register_props():
         #update=wonk,
     )
 
-    prop_dic["channel"] = StringProperty(default="", update=load_channels)
+    #prop_dic["channel"] = StringProperty(default="", update=load_channels)
     prop_dic["channel"] = EnumProperty(items=speaker_channels,
                                        name="ActionBakeChannel",
-                                       description="Add Channel To Driver Variables",
+                                       description="Baked Channel",
                                        )
     prop_dic["action"] = property(aget)
     prop_dic["gui_types"] = gui_types
