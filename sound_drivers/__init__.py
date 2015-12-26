@@ -38,6 +38,7 @@ mods = ("screen_panels",
         "driver_manager",
         "speaker",
         "sound",
+        "midi",
         "visualiser",
         "Equalizer",
         "EqMenu",
@@ -166,6 +167,7 @@ def register():
     driver_panels.register()
     speaker.register()
     sound.register()
+    midi.register()
     visualiser.register()
     Equalizer.register()
     EqMenu.register()
@@ -181,6 +183,7 @@ def unregister():
     sounddriver.unregister()
     speaker.unregister()
     sound.unregister()
+    midi.unregister()
     visualiser.unregister()
     driver_panels.unregister()
     Equalizer.unregister()
