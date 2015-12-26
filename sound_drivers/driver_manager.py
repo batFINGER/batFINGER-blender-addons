@@ -146,6 +146,7 @@ class SoundDriver():
             #cf = row.column_flow(columns=cols, align=True)
 
             chs = [(i, "%s%d" % (cn, i)) for i in range(channels)]
+            chs = [(i, fc.data_path.strip('["]')) for i, fc in enumerate(a.fcurves)]
             for i, ch in chs:
                 if not i % cols:
                     row = box.row()
@@ -154,11 +155,12 @@ class SoundDriver():
                 #col.scale_y = 0.5
                 # col.label(ch.name)
                 channel = ed.channels.get(ch)
+                channel_number = int(ch.strip(cn))
 
                 if channel is not None:
-                    col.prop(channel, 'value', text=str(i), toggle=True)
+                    col.prop(channel, 'value', text=str(channel_number), toggle=True)
                 else:
-                    op = col.operator("driver.sound_channel_activate", text="%d" % i)
+                    op = col.operator("driver.sound_channel_activate", text="%d" % channel_number)
                     op.channel = ch
                     op.dindex = self.index
 

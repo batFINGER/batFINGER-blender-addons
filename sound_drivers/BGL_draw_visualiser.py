@@ -239,7 +239,7 @@ class BGLWidget(SupportedAreas):
         bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
 
 
-    def draw_midi_keyboard(self, mx, my, w, h):
+    def draw_midi_keyboard(self, mx, my, w, h, action=None, frame=0):
         '''
         Intented to create a keyboard where key widths are
         accurately in position. 
@@ -267,20 +267,47 @@ class BGLWidget(SupportedAreas):
         x = mx
         y = my
         white = (1.0, 1.0, 1.0, 1.0)
+        black = (0.0, 0.0, 0.0, 1.0)
         # draw the white keys
+        fc_color = False
+        whitenotes = [0, 2, 4, 5, 7, 9, 11]
+        blacknotes_1 = [1, 3]
+        blacknotes_2 = [6, 8, 10]
         for octave in range(octaves):
+
             for i in range(7):
-                self.draw_box(x, y, wkw, wkh, color=white)
+                col = white
+                if action:
+                    fc = action.fcurves.find('["%s%d"]' % (action["channel_name"], octave * 12 + whitenotes[i]))
+                    if fc:
+                        if fc.evaluate(frame) > 0:
+                            r, g, b = fc.color if fc_color else (1, 0, 0)
+                            col = (r, g, b, 1.0)
+                self.draw_box(x, y, wkw, wkh, color=col)
                 x += (wkw + 1)
             # draw the black keys
             x = octave * 7 * (wkw + 1) + cde + mx + 1
             
             for i in range(2):
-                self.draw_box(x, by, bkw, bkh)
+                col = black
+                if action:
+                    fc = action.fcurves.find('["%s%d"]' % (action["channel_name"], octave * 12 + blacknotes_1[i]))
+                    if fc:
+                        if fc.evaluate(frame) > 0:
+                            r, g, b = fc.color if fc_color else (1, 0, 0)
+                            col = (r, g, b, 1.0)
+                self.draw_box(x, by, bkw, bkh, color=col)
                 x += cde + bkw + 1
             x += fgab
             for i in range(3):
-                self.draw_box(x, by, bkw, bkh)
+                col = black
+                if action:
+                    fc = action.fcurves.find('["%s%d"]' % (action["channel_name"], octave * 12 + blacknotes_2[i]))
+                    if fc:
+                        if fc.evaluate(frame) > 0:
+                            r, g, b = fc.color if fc_color else (1, 0, 0)
+                            col = (r, g, b, 1.0)
+                self.draw_box(x, by, bkw, bkh, color=col)
                 x += fgab + bkw + 1
             x += 1     
 
@@ -503,6 +530,8 @@ class BGL_SoundActionWidget(BGLWidget):
         area = context.area
         speaker = context.scene.speaker
         action = getAction(speaker)
+        scene = context.scene
+        frame = scene.frame_current
         '''
         print("MHHM")
         action = context.screen.sound_driver_areas["VIEW_3D_4"].action
@@ -528,7 +557,7 @@ class BGL_SoundActionWidget(BGLWidget):
             self.draw_box(x, y + AMP , 3 * fw , 20, color=self.gridcol)
             bgl.glDisable(bgl.GL_BLEND)
             self.draw_action_header_text(x, y+AMP, speaker, action)
-            self.draw_midi_keyboard(x, y, fw, AMP)
+            self.draw_midi_keyboard(x, y, fw, AMP, action=action, frame=frame)
         else:
             self.draw_spectrum(context, x, y, speaker, action)
             
@@ -746,7 +775,29 @@ class BGL_Draw_VisualiserPanel(SupportedAreas, ScreenLayoutPanel, Panel):
             box.prop(action_bgl, "height")
         '''
         
-  
+ 
+class SoundVisAreaPanel(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_label = "SoundVis"
+    
+    @classmethod
+    def poll(cls, context):
+        wm = context.window_manager
+        sva = context.sound_vis_areas.context
+        return wm.bgl_draw_speaker and sva is not None
+    def draw_header(self, context):
+        layout = self.layout
+        sva = context.sound_vis_areas.context
+        layout.prop(sva, "is_enabled", text="")
+        
+    def draw(self, context):
+        screen = context.screen
+        sva = context.sound_vis_areas.context
+        layout = self.layout
+        layout.prop(sva, "loc")
+        layout.prop(sva, "height")
+
 
 #class ScreenAreaAction(bpy.types.Screen):
 class ScreenAreaAction():
@@ -836,9 +887,9 @@ def reg_screen_action_bgl():
     def area(self):
         return self.id_data.areas[self.area_index]
 
-    prop_dic = {"loc": IntVectorProperty(size=2, default=(24, 24), min=0),
+    prop_dic = {"loc": IntVectorProperty(size=2, default=(0, 24), min=0),
                 "color": FloatVectorProperty(subtype='COLOR_GAMMA', size=4),
-                "height": IntProperty(default=20, min=20, max=100, step=1, subtype='PERCENTAGE', description="Height (Percent of View)", update=update_graph),
+                "height": IntProperty(default=20, min=10, max=100, step=1, subtype='PERCENTAGE', description="Height (Percent of View)", update=update_graph),
                 "use_fcurve_colors": BoolProperty(default=True),
                 "is_enabled": BoolProperty(default=True, description="Enable SoundVis for this Area"),
                 }
@@ -885,9 +936,15 @@ def register():
     register_class(ScreenActionOperator)
     register_class(SelectScreenAreaOperator)
 
+    for t in ['GRAPH_EDITOR', 'VIEW_3D', 'SEQUENCE_EDITOR', 'NLA_EDITOR']:
+        propdic = {"bl_space_type": t}
+        SettingsPanel = type("SD_SoundVis_PT_%s" % t, (SoundVisAreaPanel,), propdic)            
+        register_class(SettingsPanel)
+
 def unregister():
     #unregister_module(__name__)
     unregister_class(BGLDrawSpeaker)
     unregister_class(BGL_Draw_VisualiserPanel)
     unregister_class(ScreenActionOperator)
     unregister_class(SelectScreenAreaOperator)
+    unregister_class(SettingsPanel)
