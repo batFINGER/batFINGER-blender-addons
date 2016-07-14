@@ -17,7 +17,9 @@
 # ##### END GPL LICENSE BLOCK #####
 # <pep8-80 compliant>
 
+import os
 
+print(os.path.dirname(__file__))
 bl_info = {
     "name": "Sound Drivers",
     "author": "batFINGER",

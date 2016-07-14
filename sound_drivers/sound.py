@@ -1271,7 +1271,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
     @classmethod
     def poll(cls, context):
         
-        if context.space_data.pin_id is not None and context.space_data.pin_id != context.scene.objects.active.data:
+        if getattr(context.space_data, "pin_id", None) is not None and context.space_data.pin_id != context.scene.objects.active.data:
             return False
         return True
 
@@ -1320,8 +1320,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
             layout = self.layout
             layout.operator("sounddrivers.cancel_baking")
             layout.operator("sounddrivers.continue_baking")
-
-
+        
         if BakeSoundPanel.cancel_baking:
             self.clean()
             return self.cancel(context)
@@ -1334,7 +1333,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         sound = self.sound
         speaker = self.speaker
         action = speaker.animation_data.action
-
+        
         if event.type == 'ESC' or not BakeSoundPanel.baking:
             context.window_manager.popup_menu(confirm_cancel, title="Baking", icon='SOUND')
             BakeSoundPanel.wait = 1000000
@@ -1490,7 +1489,7 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
-        #WWW
+        
         BakeSoundPanel.bake_times = []
         wm = context.window_manager
         wm_rnaui = wm.get("_RNA_UI")
@@ -1618,16 +1617,18 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         print("-" * 80)
         print("BAKING %s to action %s" % (self.sound.name, action.name))
         print("-" * 80)
+
         return {'RUNNING_MODAL'}
 
     def finished(self, context):
         # return to view3d
+
         if self.view3d is not None:
             self.view3d.type = self._view3d
         print("TOTAL BAKE TIME: %02d:%02d:%02d" %
                   splittime(sum(BakeSoundPanel.bake_times)))
         BakeSoundPanel.report = "Finished Baking"
-        context.area.header_text_set()
+        #context.area.header_text_set()
         # set up the rnas
         sp = self.speaker
         sound = self.sound
@@ -1688,9 +1689,11 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
 
         BakeSoundPanel.report = "User Cancelled Cleaning..."
         BakeSoundPanel.baking = False
-        context.area.header_text_set()
+        
+        #context.area.header_text_set()
         context.window_manager.event_timer_remove(self._timer)
-        print("BAKING CANCELLED.....................")
+        print("BAKING CANCELLED.")
+        return None
         return {'CANCELLED'}
 
 

@@ -1253,7 +1253,7 @@ class DriverManager():
         for d in self._dummies:
             if d.fcurve:
                 #XXXX
-                print(d.driven_object, d.prop)
+                #print(d.driven_object, d.prop)
                 if not d.driven_object.driver_remove(d.prop):
                     #try  # possibly going to need try / catch here.
                     d.fcurve.driver_remove(d.data_path)

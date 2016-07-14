@@ -211,7 +211,7 @@ def speaker_channels(self, context):
     channels = []
     if hasattr(context.scene, "speaker"):
         channels = getattr(context.scene.speaker, "channels", [])
-    print(channels)
+    #print(channels)
     return[(ch, ch, "Drive with %s%d" % (ch, 2*i)) for i, ch in enumerate(channels)]
 
 def aget(self):
@@ -232,7 +232,7 @@ def gui_type_items(self, context):
     return gui_types
 
 def enum_up(self, context):
-    print("XXX", self.gui_types)
+    #print("XXX", self.gui_types)
     if 'ACTION' in self.gui_types:
         if 'SOUNDDRIVER' not in self.gui_types: # is subset
             print("ADDDDD SOUNDDRIVER")

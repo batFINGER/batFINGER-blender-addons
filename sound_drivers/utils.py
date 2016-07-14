@@ -490,7 +490,6 @@ def copy_sound_action(speaker, newname):
 
 
 def nla_drop(obj, action, frame, name, multi=False):
-    print("nla_drop", name)
     if not multi:
         #check if there is already a strip with this action
         tracks = [s for t in obj.animation_data.nla_tracks

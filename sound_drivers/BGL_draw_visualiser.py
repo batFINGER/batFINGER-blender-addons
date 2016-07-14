@@ -804,7 +804,10 @@ class ScreenAreaAction():
     def __init__(self, context):
         self.screen = context.screen
         #self.context = self.get_area(context.area)
-        self.context = getattr(self.get_area(context.area), context.area.type, None)
+        if getattr(context, "area", None):
+            self.context = getattr(self.get_area(context.area), context.area.type, None)
+        else:
+            self.context = None
 
 
     def create_area(self, key, index, area):
@@ -880,9 +883,6 @@ def reg_screen_action_bgl():
     def index(self):
         sp = self.name.split("_")
         return int(sp[-1])
-        print(self.name)
-        print("MMM")
-        return 2
 
     def area(self):
         return self.id_data.areas[self.area_index]
@@ -896,8 +896,7 @@ def reg_screen_action_bgl():
            
     action_bgl_props = type("ActionBGL", (PropertyGroup,), prop_dic)
     register_class(action_bgl_props)
-    bong = SupportedAreas()
-
+    #sa = SupportedAreas()
 
     propdic = {"area_index": property(index),
                "area": property(area),
@@ -923,6 +922,7 @@ def reg_screen_action_bgl():
     bpy.types.Screen.sound_driver_areas = CollectionProperty(type=SD_AreaSettings)
     bpy.types.Context.sound_vis_areas = property(get_sda_current)
     
+settings_panels = []
 
 def register():
     #bpy.types.
@@ -939,6 +939,7 @@ def register():
     for t in ['GRAPH_EDITOR', 'VIEW_3D', 'SEQUENCE_EDITOR', 'NLA_EDITOR']:
         propdic = {"bl_space_type": t}
         SettingsPanel = type("SD_SoundVis_PT_%s" % t, (SoundVisAreaPanel,), propdic)            
+        settings_panels.append(SettingsPanel)
         register_class(SettingsPanel)
 
 def unregister():
@@ -947,4 +948,7 @@ def unregister():
     unregister_class(BGL_Draw_VisualiserPanel)
     unregister_class(ScreenActionOperator)
     unregister_class(SelectScreenAreaOperator)
-    unregister_class(SettingsPanel)
+    for t in ['GRAPH_EDITOR', 'VIEW_3D', 'SEQUENCE_EDITOR', 'NLA_EDITOR']:
+        SettingsPanel = getattr(bpy.types, "SD_SoundVis_PT_%s" % t, None)
+        if SettingsPanel:
+            unregister_class(SettingsPanel)
