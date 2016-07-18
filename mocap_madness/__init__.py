@@ -291,6 +291,31 @@ class MMPlayPanel(MocapMadness3DPanel, Panel):
         if action:
             self.draw_action_info(action)
 
+from bl_operators.presets import AddPresetBase
+
+class ImportBVH_preset_add(AddPresetBase, bpy.types.Operator):
+    """Add a new render preset."""
+    bl_idname = 'render.my_preset_add'
+    bl_label = 'Add BVH Import Preset'
+    bl_options = {'REGISTER', 'UNDO'}
+    preset_menu = 'BVHImportPresetMenu_presets'
+    preset_subdir = 'import_anim.bvh_mocap_madness'
+
+    preset_defines = [
+        "op = bpy.context.active_operator",
+        ]
+
+    preset_values = [
+        "op.global_scale",
+        "op.frame_start",
+        "op.use_fps_scale",
+        "op.rotate_mode",
+        "op.rig_only",
+        "op.only_keep_first_rig",
+        "op.only_rootbone_location",
+        "op.use_frame_step",
+        "op.action_only"
+        ]
 
 class ImportBVH(Operator, ImportHelper):
     """Load BVH motion capture file(s)"""
@@ -425,6 +450,16 @@ class ImportBVH(Operator, ImportHelper):
 
     def draw(self, context):
         layout = self.layout
+
+        col = layout.column_flow(align=True)
+        col.label('BVH Import Presets:')
+        row = col.row(align=True)
+        row.menu("BVHImportPresetMenu_presets",
+                 text=bpy.types.BVHImportPresetMenu_presets.bl_label)
+        row.operator("render.my_preset_add", text="", icon='ZOOMIN')
+        row.operator("render.my_preset_add", text="", icon='ZOOMOUT').remove_active = True
+
+
         # check whether it's a subdir of CMU
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
@@ -503,6 +538,12 @@ class ImportBVH(Operator, ImportHelper):
         addon_prefs = user_preferences.addons[__name__].preferences
         return addon_prefs.use_cmu_data
 
+    invoke = ImportHelper.invoke
+    '''
+    def invoke(self, context, event):
+        return {'FINISHED'}
+
+    '''
     def execute(self, context):
 
         if self.cmu(context):
@@ -884,6 +925,15 @@ class SnapPoseboneVisual(Operator):
             context.user_preferences.edit.use_global_undo = use_global_undo
         return {'FINISHED'}
 
+
+class BVHImportPresetMenu_presets(bpy.types.Menu):
+    '''Presets for render settings.'''
+    bl_label = "BVH Import Presets"
+    bl_idname = "BVHImportPresetMenu_presets"
+    preset_subdir = "import_anim.bvh_mocap_madness"
+    preset_operator = "script.execute_preset"
+
+    draw = bpy.types.Menu.draw_preset
 '''
 Menu functions
 '''

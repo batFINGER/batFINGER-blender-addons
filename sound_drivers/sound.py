@@ -771,6 +771,16 @@ class BakeSoundPanel(ScreenLayoutPanel, BakeSoundGUIPanel, Panel):
 
         #row.operator(self.bl_idname).preset = "FOOBAR"
         row = layout.row()
+        
+        col = layout.column_flow(align=True)
+        col.label("Bake Options")
+        row = col.row(align=True)
+        row.menu("speaker.preset_menu",
+                 text=getattr(bpy.types, "speaker.preset_menu").bl_label)
+        row.operator("wm.soundtool_operator_preset_add", text="", icon='ZOOMIN')
+        row.operator("wm.soundtool_operator_preset_add", text="", icon='ZOOMOUT').remove_active = True
+        
+        
         #row.prop(bakeoptions, "show_graph_editor", toggle=True, emboss=True)
         '''
         preset_box = row.box()
