@@ -25,7 +25,6 @@ from math import radians, floor
 import bpy
 from mathutils import Vector, Euler, Matrix
 
-
 class BVH_Node(object):
     __slots__ = (
         'name',  # bvh joint name

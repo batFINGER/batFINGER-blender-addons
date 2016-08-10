@@ -10,9 +10,16 @@ from sound_drivers.utils import (bpy_collections,
                                  split_path
                                 )
 from sound_drivers import debug
+from sound_drivers.icons import icon_value
 from mathutils import Vector, Color, Euler, Quaternion
 from math import sqrt, degrees
 
+
+icon_value = bpy.types.UILayout.icon 
+
+# need to seperate driver from sounddriver.
+class Driver:
+    pass
 
 class SoundDriver():
     _index = 0
@@ -125,6 +132,7 @@ class SoundDriver():
             row = box.row()
             row.label("SoundDriver", icon='SOUND')
             #REFACTO CORRECTO
+
             row = box.row()
             a = bpy.data.actions.get(ed.action)
             #row.label(a.get("channel_name","AA"))
@@ -142,21 +150,27 @@ class SoundDriver():
             #cn = a['channel_name']
             cn = ed.channel
             channels = a['Channels']
+            channels = len(a.fcurves)
             cols = min(int(sqrt(channels)), 16)
             #cf = row.column_flow(columns=cols, align=True)
 
             chs = [(i, "%s%d" % (cn, i)) for i in range(channels)]
             chs = [(i, fc.data_path.strip('["]')) for i, fc in enumerate(a.fcurves)]
             for i, ch in chs:
+
+                channel = ed.channels.get(ch)
+                #print("\nchannel", channel, "\nch", ch, "\ncn", cn, "\nchannels", channels, "\ned.channels", ed.channels)
+                if ch.startswith(cn):
+                    channel_number = int(ch.strip(cn))
+                else:
+                    continue # TODO fix
+                    channel_number = int(ch[2:])
                 if not i % cols:
                     row = box.row()
                 #col = cf.row()
                 col = row.column()
                 #col.scale_y = 0.5
                 # col.label(ch.name)
-                channel = ed.channels.get(ch)
-                channel_number = int(ch.strip(cn))
-
                 if channel is not None:
                     col.prop(channel, 'value', text=str(channel_number), toggle=True)
                 else:
@@ -674,7 +688,9 @@ class SoundDriver():
         self.is_texture = data_path.startswith("textures")
         #driver_fcurve = self.fcurve
         driver_fcurve = driver
+        # todo make axis "RGB" and use d.array_index
         is_vector = False
+        axis = ""
         text = ""
         if scene_name is not None:
             #do = eval(scene_name)
@@ -763,8 +779,8 @@ class SoundDriver():
             driver.color[array_index] = 1
             '''
             self.is_color = True
-            rgb = "RGB"[array_index]
-            text = "%s %s" % (rgb, do.bl_rna.properties[prop].name)
+            axis = "RGB"[array_index]
+            text = "%s %s" % (axis, do.bl_rna.properties[prop].name)
             mo = mo[array_index]
 
         elif type(mo).__name__ == "bpy_prop_array":
@@ -786,11 +802,17 @@ class SoundDriver():
                 text = "PROBLEM"
 
         self.driven_object = do
+        self.icon_value = icon_value(do) if do else 0
         self.default_value = repr(mo)
         self.is_vector = is_vector
         self.is_idprop = is_idprop
         self.prop = prop
         self.text = text
+        self.axis = axis
+
+    @property
+    def propname(self):
+        return self.driven_object.bl_rna.properties[self.prop].name
 
     def edit(self, layout, context):
 
@@ -1081,7 +1103,7 @@ class SoundDriver():
 class DriverManager():
     _edit_driver = None
     _filterdic = {}
-    ticker = 0
+    ticker = 10000
     _all_drivers_list = []
 
     def index(self, driver):
@@ -1214,6 +1236,11 @@ class DriverManager():
                                 self._all_drivers_list.append(
                                     SoundDriver(d, collname, obname, dp, ix))
 
+        # index them
+        for i, d in enumerate(self._all_drivers_list):
+            d.index = i
+
+
         return self._all_drivers_list
         '''
         return sorted(self._all_drivers_list,
@@ -1223,7 +1250,99 @@ class DriverManager():
                                      "array_index"))
         '''
 
-    #xxxx = property(get_all_drivers_list)
+    def get_context_object_dic(self, object):
+        '''
+        Get Dictionary for all drivers of object
+        object: Blender Object
+        return: dictionary of drivers
+        '''
+        return {}
+
+    def get_object_drivers(self, obj):
+        '''
+        Get List of all drivers of object obj.
+        '''
+        return [d for d in self._all_drivers_list if d.fcurve.id_data == obj.id_data]
+
+    def get_driven_object_driver_dic(self, drivers):
+        '''
+        returns a dictionary using rna_type.base.names
+        '''
+
+        #drivers = dm.get_object_drivers(obj)
+
+        dic = {}
+        icon_dic = {}
+        for d in drivers:
+            if d.driven_object.rna_type.base is None:
+                base_name = d.driven_object.rna_type.name
+            else:
+                base_name = d.driven_object.rna_type.base.name
+            '''
+            if base_name == 'ID':
+                # it's an ID object 
+                base_name = obj.type
+            '''
+            base = dic.setdefault(base_name, {})
+            objects = base.setdefault(d.driven_object.name, {})
+            icon_dic[d.driven_object.name] = icon_value(d.driven_object)
+            dp = objects.setdefault(d.propname, {})
+            ai = dp.setdefault(str(d.array_index), d.index)
+        print("ICON DIC", icon_dic)
+        return dic, icon_dic
+
+    def draw_pie_menu(self, obj, pie):
+        drivers = self.get_object_drivers(obj)
+        dic, icon_dic = self.get_driven_object_driver_dic(drivers)
+        for type, driven_objects in dic.items():
+            print(type, driven_objects)
+            #box = pie.box()
+            for name, datapaths in driven_objects.items():
+                box = pie.box()
+                box = box.row()
+                print(name, datapaths)
+                box.label(name, icon_value=icon_dic.get(name))
+                col = box
+                for dp, drivs in datapaths.items():
+
+                    row = box.row(align=True)
+                    col = row.column()
+                    col.label(dp)
+                    row = col.row(align=True)
+
+                    #col.label(dp)
+                    for axis, dindex in drivs.items():
+                        print(axis, dindex)
+                        #row = col.column(align=True)
+                        #row.scale_y = 0.6
+                        #row = col
+                        d = self.find(dindex)
+                        #d.draw_slider(row)
+                        #op = row.operator("driver.popup_driver", text=d.text, emboss=False)
+                        text = d.axis if d.axis else d.prop
+                        op = row.operator("driver.popup_driver", text=text, emboss=True)
+                        op.dindex = dindex
+
+        return
+        for dp, dr in dic.items():
+            #p = pie.menu_pie()
+            col = pie.column()
+            box = col.box()
+            box.label(dp, icon='DRIVER')
+            for index, dindex in dr.items():
+                driver = dm.find(dindex)
+                if driver.driven_object != obj:
+                    box.label(driver.driven_object.name)
+                #driver.edit(box, context)
+                row = box.row()
+                row.scale_y = row.scale_x = 0.5
+                driver.draw_slider(row)
+                #driver.draw_default(box)
+                #driver.driver_edit_draw(box, context)
+                #dm.driver_draw(driver, box)
+                op = row.operator("driver.popup_driver", text="EDIT")
+                op.dindex = dindex
+                # op.toggle = True
 
     def get_filter_dic(self):
         self._filterdic.clear()
@@ -1361,9 +1480,7 @@ class DriverManager():
         pass
 
     def get_collection_dic(self, collection):
-        dm = self
-        dic = dm.filter_dic
-        return dic.get(collection, {})
+        return self.filter_dic.get(collection, {})
 
     def get_object_dic(self, collection, object):
         dm = self

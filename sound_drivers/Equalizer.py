@@ -78,12 +78,13 @@ def local_grabber(index, locs, dm):
     dns = bpy.app.driver_namespace
     dm = dns.get("DriverManager")
     '''
-    #print("localgrabber")
+    #print("localgrabber", locs)
     if dm is None:
         return 0.0
     ed = dm.find(index)
 
     if ed is not None:
+        #print("found and settling", index, ed)
         setattr(ed, "locs", locs)
         #print(ed.driven_object)
     return 0.0
@@ -376,6 +377,7 @@ def action_normalise_set(self, context):
         return None
     speaker_rna = self.get('rna')
     speaker_rna = eval(speaker_rna)
+    print(speaker_rna.keys())
 
     def add_normal_envelope(fcurve, type):
         #print("RNA", self.speaker_rna)
@@ -410,10 +412,11 @@ def action_normalise_set(self, context):
                 if self.normalise == 'NONE':
                     continue
                 m.reference_value = 0.0
+                print(speaker_rna[channel])
                 m.default_min = self["min"]\
-                                if i == 0 else speaker_rna[channel]["min"]
+                                if not i else speaker_rna[channel]["min"]
                 m.default_max = self["max"]\
-                                if i == 0 else speaker_rna[channel]["max"]
+                                if not i else speaker_rna[channel]["max"]
 
             low = speaker_rna[channel]["low"]
             high = speaker_rna[channel]["high"]

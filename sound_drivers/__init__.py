@@ -17,9 +17,6 @@
 # ##### END GPL LICENSE BLOCK #####
 # <pep8-80 compliant>
 
-import os
-
-print(os.path.dirname(__file__))
 bl_info = {
     "name": "Sound Drivers",
     "author": "batFINGER",
@@ -49,20 +46,21 @@ mods = ("screen_panels",
         "utils",
         "graph",
         "BGL_draw_visualiser",
-        "presets")
+        "presets",
+        "pie_menu",
+        "icons")
 
 if "bpy" in locals():
     import imp
     for mod in mods:
         exec("imp.reload(%s)" % mod)
-
-
 else:
     for mod in mods:
         exec("from . import %s" % mod)
 
 
 import bpy
+from rna_keymap_ui import draw_kmi
 from bpy.types import  AddonPreferences
 from bpy.props import StringProperty, BoolProperty, IntProperty
 from bpy.utils import register_class, unregister_class
@@ -136,6 +134,7 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             row.prop(self, "driver_manager_update_speed", slider=True)
         row = layout.row()
         row = layout.prop(self, "midi_support")
+        
         # midi support
         if self.midi_support:
             row = layout.row()
@@ -146,7 +145,6 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             row = layout.row()
             if "smf" in locals():
                 row.label("SMF IMPORTED OK...", icon='FILE_TICK')
-
             else:
                 try:
                     import sys
@@ -161,8 +159,21 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         row.prop(self, "audio_dir", icon='SOUND')
         row = layout.row()
         row.prop(paths, "sound_directory", icon='SOUND')
+        row = layout.row()
+        col = row.column()
+        #draw_filtered(pie_menu.addon_keymaps, 'NAME', 'drivers pie menu', col)
+        #draw_filtered(pie_menu.addon_keymaps, '', '', col)
 
+        kc = bpy.context.window_manager.keyconfigs.addon
+        from sound_drivers.pie_menu  import addon_keymaps
+        for km, kmi in addon_keymaps:
+            km = km.active()
+            col.context_pointer_set("keymap", km)
+            draw_kmi([], kc, km, kmi, col, 0)
 
+        for akm in pie_menu.addon_keymaps:
+            row.label(str(akm))
+        
 def register():
     register_class(SpeakerToolsAddonPreferences)
     sounddriver.register()
@@ -178,7 +189,8 @@ def register():
     graph.register()
     BGL_draw_visualiser.register()
     filter_playback.register()
-
+    icons.register()
+    pie_menu.register()
 
 def unregister():
     unregister_class(SpeakerToolsAddonPreferences)
@@ -195,3 +207,5 @@ def unregister():
     graph.unregister()
     BGL_draw_visualiser.unregister()
     filter_playback.unregister()
+    icons.unregister()
+    pie_menu.unregister()

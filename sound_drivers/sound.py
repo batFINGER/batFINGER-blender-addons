@@ -857,6 +857,7 @@ class SoundVisMenu(Menu):
     vismode = 'VISUAL'
 
     def draw(self, context):
+        layout = self.layout
         speaker = getSpeaker(context)
         #speaker = context.scene.speaker
         #if SoundVisMenu.vismode in ["VISUAL", "SOUND", "DRIVERS"]:
@@ -865,11 +866,28 @@ class SoundVisMenu(Menu):
                        if "wavfile" in action
                        and action["wavfile"] == speaker.sound.name]
 
+            
             for action in actions:
-                op = self.layout.operator("soundaction.change",
-                          text="%s   %s"\
-                          % (action["channel_name"], action.name))
-                op.action = action.name
+                if "channels" in action.keys(): # midi atm TODO
+                    channels = action["channels"]
+                    channels.sort()
+                    layout.label("MIDI %s" %  action["wavfile"])
+                    layout.separator()
+                    groups = [g.name for g in action.groups]
+                    groups.sort()
+                    for channel in channels:
+                        cn = groups[channels.index(channel)]
+                        op = layout.operator("soundaction.change",
+                             text="%s" % (cn))
+                        op.action = action.name
+                        op.channel = channel
+                else:
+                    layout.label("MUSIC %s" % action.name)
+                    layout.separator()
+                    channel = action["channel_name"]
+                    op = layout.operator("soundaction.change",
+                         text="%s" % (channel))
+                    op.action = action.name
 
 
 class SoundActionBaseOperator:
@@ -993,10 +1011,11 @@ class SD_ReBakeTweak(SoundActionBaseOperator, Operator):
 
 
 class ChangeSoundAction(Operator):
-    """Load Action"""
+    """Make Action Active"""
     bl_idname = "soundaction.change"
     bl_label = "Load Action"
-    action = StringProperty(default="")
+    action = StringProperty(default="", options={'SKIP_SAVE'})
+    channel = StringProperty(default="", options={'SKIP_SAVE'})
 
     def execute(self, context):
         #speaker = context.scene.speaker
@@ -1007,6 +1026,9 @@ class ChangeSoundAction(Operator):
         if soundaction is not None:
             SoundVisMenu.bl_label = soundaction["channel_name"]
             speaker.animation_data.action = soundaction
+            if self.channel:
+                # set channel for now TODO
+                soundaction["channel_name"] = self.channel
             action_normalise_set(soundaction, context)
 
         dm = bpy.app.driver_namespace.get('DriverManager')

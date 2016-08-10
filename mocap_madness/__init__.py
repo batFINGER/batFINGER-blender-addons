@@ -310,6 +310,8 @@ class ImportBVH_preset_add(AddPresetBase, bpy.types.Operator):
         "op.frame_start",
         "op.use_fps_scale",
         "op.rotate_mode",
+        "op.axis_up",
+        "op.axis_forward",
         "op.rig_only",
         "op.only_keep_first_rig",
         "op.only_rootbone_location",
@@ -471,6 +473,10 @@ class ImportBVH(Operator, ImportHelper):
         '''
         row = layout.row()
         row.prop(self, "target")
+        row = layout.row()
+        row.prop(self, "axis_up")
+        row = layout.row()
+        row.prop(self, "axis_forward")
         row = layout.row()
         row.prop(self, "rotate_mode")
         row = layout.row()
