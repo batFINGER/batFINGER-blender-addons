@@ -428,7 +428,6 @@ def selected_bbox(context):
     fmin = -sys.float_info.max
     fmax = sys.float_info.max
     sel = context.selected_objects
-
     if sel:
         bbox = [fmax, fmin, fmax, fmin, fmax, fmin]
         for ob in sel:

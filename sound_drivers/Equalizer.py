@@ -329,7 +329,7 @@ def showFilterBox(layout, context, speaker, action):
 
         sound_channel_id = "%s__@__%s" % (speaker.name, action.name)
         sound_item = None
-        from sound_drivers.filter_playback import  sound_buffer
+        from sound_drivers.filter_playback import sound_buffer
         if sound_buffer:
             sound_item = sound_buffer.get(sound_channel_id)
         filter_item = scene.sound_channels.get(sound_channel_id)
@@ -342,11 +342,10 @@ def showFilterBox(layout, context, speaker, action):
             '''
             for i in range(start, end + 1):
                 cn = "channel%02d" % i
-                #box.split(percentage=0.50)
                 if not i % COLS:
                     row = box.row()
                 col = row.column()
-                #BUGGY on speaker object
+                # BUGGY on speaker object
                 icon = 'OUTLINER_DATA_SPEAKER'
                 if sound_item and sound_item.get(cn):
                     icon = 'OUTLINER_OB_SPEAKER'
@@ -380,7 +379,6 @@ def action_normalise_set(self, context):
     print(speaker_rna.keys())
 
     def add_normal_envelope(fcurve, type):
-        #print("RNA", self.speaker_rna)
         '''
         mods = [m for m in fcurve.modifiers if m.type == 'ENVELOPE']
         # remove mods (shouldn't be any)
@@ -506,16 +504,17 @@ def defaultPanels(regflag):
 
 
 def play_live(self, context):
-    speakers = ModalTimerOperator.speakers
+    speakers = OLDSettingsOperator.speakers
     if self.play:
         if self not in speakers:
             speakers.append(self)
     return None
 
 
-class ModalTimerOperator(bpy.types.Operator):
-    bl_idname = "wm.modal_timer_operator"
-    bl_label = "Modal Timer Operator"
+# pretty sure this can be trashed.
+class OLDSettingsOperator(bpy.types.Operator):
+    bl_idname = "sound_tools.vismode_set"
+    bl_label = "Vismode Settings"
 
     _timer = None
     speakers = []
@@ -525,14 +524,14 @@ class ModalTimerOperator(bpy.types.Operator):
             return self.cancel(context)
 
         if event.type == 'TIMER':
-            for speaker in ModalTimerOperator.speakers:
+            for speaker in OLDSettingsOperator.speakers:
                 speaker.vismode = speaker.vismode
         return {'PASS_THROUGH'}
 
     def execute(self, context):
         wm = context.window_manager
         wm.modal_handler_add(self)
-        ModalTimerOperator.speakers = [speaker
+        OLDSettingsOperator.speakers = [speaker
                                        for speaker in bpy.data.speakers
                                        if speaker.play == True]
 
@@ -609,7 +608,7 @@ def dummy(self, context):
     return ((_min, _max), (v.index(_min), v.index(_max)))
 
 
-def panel_items(self, context):
+def vismode_panel_items(self, context):
     # if is_baking then only show bake panel
     #print("PANEL ITEMS", self, context.scene)
     if bpy.types.BakeSoundPanel.baking:
@@ -617,6 +616,14 @@ def panel_items(self, context):
     
     pv = [("SPEAKER", "SPEAKER", "Edit Speaker properties", 'SPEAKER', 1),
           ("SOUND", "SOUND", "Edit sound properties", 'SOUND', 2)]
+    midi_mode = True
+    if midi_mode:
+        from sound_drivers.icons import preview_collections
+        pcoll = preview_collections["main"]
+        icon = pcoll["midi"]
+
+        pv.append(
+          ("MIDI", "MIDI", "Associate a midi file", icon.icon_id, 128))
     if self.sound is not None:
         pv.extend([("BAKE", "BAKE", "Bake Sound to FCurves", 'FCURVE', 64)])
     if not getattr(self, "animation_data", None):
@@ -669,7 +676,7 @@ def register():
                                  description="Remap Action RANGE",
                                  update=action_normalise_set)
 
-    bpy.types.Speaker.vismode = EnumProperty(items=panel_items,
+    bpy.types.Speaker.vismode = EnumProperty(items=vismode_panel_items,
                                 name="SoundDriver",
                                 description="Panel Filters",
                                 options={'HIDDEN', 'ENUM_FLAG'})
@@ -702,7 +709,7 @@ def register():
             PointerProperty(type=SoundToolSettings)
 
     bpy.types.Action.show_freq = BoolProperty(default=True)
-    #bpy.utils.register_class(ModalTimerOperator)
+    #bpy.utils.register_class(OLDSettingsOperator)
     bpy.utils.register_class(OLDSoundVisualiserPanel)
     bpy.app.handlers.load_post.append(InitSoundTools)
     if ("GetLocals" not in bpy.app.driver_namespace 
@@ -715,7 +722,7 @@ def unregister():
     defaultPanels(True)
     bpy.utils.unregister_class(SoundChannels)
     bpy.utils.unregister_class(OLDSoundVisualiserPanel)
-    #bpy.utils.unregister_class(ModalTimerOperator)
+    #bpy.utils.unregister_class(OLDSettingsOperator)
     bpy.utils.unregister_class(SoundToolSettings)
 
     bpy.app.handlers.load_post.remove(InitSoundTools)

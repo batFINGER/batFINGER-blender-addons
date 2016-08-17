@@ -393,13 +393,13 @@ class SD_MIDIFilesPanel(bpy.types.Panel):
     def poll(cls, context):
         pin_id = context.space_data.pin_id
         sp = pin_id if pin_id is not None else context.object.data
-        return getattr(sp, "sound", False)
+        return getattr(sp, "sound", False) and 'MIDI' in getattr(sp, "vismode", [])
 
     def draw_header(self, context):
         from sound_drivers.icons import preview_collections
         pcoll = preview_collections["main"]
         icon = pcoll["midi"]
-        self.layout.label("BOO", icon_value=icon.icon_id)
+        self.layout.label("", icon_value=icon.icon_id)
     def draw(self, context):
         sp = getSpeaker(context)
         #sound = sp.sound

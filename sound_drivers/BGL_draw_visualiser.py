@@ -320,6 +320,7 @@ class BGLWidget(SupportedAreas):
                     #fc = action.fcurves.find('["%s%d"]' % (action["channel_name"], octave * 12 + whitenotes[i]))
                     for fc in fcurves:
                         if fc.evaluate(frame) > 0:
+                            debug.print("BGL",fc.data_path)
                             r, g, b = fc.color if fc_color else (1, 0, 0)
                             col = (r, g, b, 1.0)
                 self.draw_box(x, y, wkw, wkh, color=col)
@@ -950,7 +951,7 @@ def reg_screen_action_bgl():
                "GRAPH_EDITOR": PointerProperty(type=action_bgl_props),
                "NLA_EDITOR": PointerProperty(type=action_bgl_props),
                "SEQUENCE_EDITOR": PointerProperty(type=action_bgl_props),
-               "CONSOLE": PointerProperty(type=action_bgl_props), # for testing UI
+               #"CONSOLE": PointerProperty(type=action_bgl_props), # for testing UI
                "TIMELINE": PointerProperty(type=action_bgl_props),
                 }
 
