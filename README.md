@@ -1,4 +1,5 @@
 # Sound Drivers
+<img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/anim.gif" align="left" height="300" >
 Blender Addon
 Driving Animation with Sound ( incuding driver-manager )
 
