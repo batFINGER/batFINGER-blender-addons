@@ -1,7 +1,13 @@
 # sound-bake-drivers
 Blender Addon
 Driving Animation with Sound ( incuding driver-manager )
+
+Make Visualisers Quickly
+
+![Visualiser](https://github.com/batFINGER/sound-bake-drivers/wiki/images/visquick.png)
+
 Added MIDI Support
+
 ![MIDI](https://github.com/batFINGER/sound-bake-drivers/wiki/images/midi2.png)
 # mocap-madness
 Extended tools for bvh mocap files.

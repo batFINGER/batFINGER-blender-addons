@@ -164,6 +164,8 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         #draw_filtered(pie_menu.addon_keymaps, 'NAME', 'drivers pie menu', col)
         #draw_filtered(pie_menu.addon_keymaps, '', '', col)
 
+        '''
+        # buggy n core-dumpy
         kc = bpy.context.window_manager.keyconfigs.addon
         from sound_drivers.pie_menu  import addon_keymaps
         for km, kmi in addon_keymaps:
@@ -173,7 +175,7 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
 
         for akm in pie_menu.addon_keymaps:
             row.label(str(akm))
-        
+        ''' 
 def register():
     register_class(SpeakerToolsAddonPreferences)
     sounddriver.register()
