@@ -1,8 +1,12 @@
-# sound-bake-drivers
+# Sound Drivers
 Blender Addon
 Driving Animation with Sound ( incuding driver-manager )
 
-Make Visualisers Quickly
+**Install the Addon**
+
+![Install Sound Drivers](https://github.com/batFINGER/sound-bake-drivers/wiki/images/install_addon.png)
+
+**Make Visualisers Quickly**
 
 ![Visualiser](https://github.com/batFINGER/sound-bake-drivers/wiki/images/visquick.png)
 
