@@ -1,5 +1,5 @@
 <img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/anim.gif"  width="100%" height="150" padding="10" align="center" >
-<h1 padding="10">Sound Drivers</h1>
+<h1 padding="10">Sound Drivers</h1><a name="sound_drivers"/>
 **Blender Addon Drive animation with sound**
 ---
 
@@ -19,6 +19,8 @@ Open the zip file from github in your favourite archive program.  Move the `soun
 
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/install_addon.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/install_addon.png" height="200" ></a>
 
+[back to top](#sound_drivers)
+
 ---
 **Bake to multiple frequencies<a name="bake"></a>**
 
@@ -26,6 +28,8 @@ Open the zip file from github in your favourite archive program.  Move the `soun
 
 Only need to select the start and end frequencies to bake across a range.  By default bakes to 16 channels from 1 to 40,000 Hz (the audible spectrum) using a log base.  
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/bake.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/bake.png" height="200" ></a>
+
+[back to top](#sound_drivers)
 
 ---
 **Normalize Actions<a name="normalize"></a>**
@@ -36,6 +40,8 @@ Automatically makes the range of the action [0, 1] after baking using fcurve mod
 
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/normalize.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/normalize.png" height="200" ></a>
 
+[back to top](#sound_drivers)
+
 
 
 ---
@@ -45,7 +51,13 @@ Automatically makes the range of the action [0, 1] after baking using fcurve mod
 
 Display a visualiser using properties in the UI or with a BGL overlay on the UI. 
 
-<a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visualizer.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visualizer.png" height="200" ></a>
+<a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visualiser_new.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visualiser_new.png" height="200" ></a>
+
+<span text-size="-1" margin="0" padding="0">
+_Image: Visualisers in the 3d view, graph editor and timeline"_
+</span>
+
+[back to top](#sound_drivers)
 
 
 ---
@@ -62,6 +74,8 @@ Create and drive an object or set of objects with channel 0 of a sound bake, and
 _Default Cylinder, array modifier with count driven by channel 0 of AA bake._
 </span>
 
+[back to top](#sound_drivers)
+
 ---
 **MIDI file support<a name="midi"></a>**
 
@@ -71,6 +85,8 @@ _Default Cylinder, array modifier with count driven by channel 0 of AA bake._
 
 
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/midi2.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/midi2.png" height="200" ></a> 
+
+[back to top](#sound_drivers)
 
 
 # mocap-madness
