@@ -1,18 +1,22 @@
+---
 <img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/anim.gif"  width="100%" height="150" padding="10" align="center" >
 <h1 padding="10">Sound Drivers</h1>
----
 **Blender Addon Drive animation with sound**
 
----
 [install](#install)
 [bake](#bake)
 [normalize](#normalize)
 [visualize](#visualize)
 [midi](#midi)
+---
 
+---
 **Install the Addon<a name="install"></a>**
 
+---
+
 Open the zip file from github in your favourite archive program.  Move the `sound_drivers` folder into your blender  "scripts/addons/folder"
+
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/install_addon.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/install_addon.png" height="200" ></a>
 
 ---
@@ -35,15 +39,13 @@ Automatically makes the range of the action [0, 1] after baking using fcurve mod
 
 
 ---
-**Make Visualisers Quickly<a name="visualize"></a>**
+**UI Visualise with BGL<a name="visualize"></a>**
 
 ---
 
-Create and drive an object or set of objects with channel 0 of a sound bake, and the automatically produce a grid of objects, each driven by the corresponding channel.
+Display a visualiser using properties in the UI or with a BGL overlay on the UI. 
 
-
-<a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visquick.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visquick.png" height="200" ></a>
-
+<a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visualizer.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/visualizer.png" height="200" ></a>
 
 
 ---
