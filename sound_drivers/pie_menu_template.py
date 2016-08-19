@@ -88,6 +88,7 @@ def register():
 def unregister():
     unregister_class(VIEW3D_PIE_template)
     bpy.utils.unregister_class(PieMenuDriverPopup)
+    addon_keymaps.clear()
 
 if __name__ == "__main__":
     register()

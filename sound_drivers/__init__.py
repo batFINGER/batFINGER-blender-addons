@@ -47,7 +47,7 @@ mods = ("screen_panels",
         "graph",
         "BGL_draw_visualiser",
         "presets",
-        "pie_menu",
+        "pie_menu_template",
         "icons")
 
 if "bpy" in locals():
@@ -192,7 +192,7 @@ def register():
     BGL_draw_visualiser.register()
     filter_playback.register()
     icons.register()
-    pie_menu.register()
+    pie_menu_template.register()
 
 def unregister():
     unregister_class(SpeakerToolsAddonPreferences)
@@ -210,4 +210,4 @@ def unregister():
     BGL_draw_visualiser.unregister()
     filter_playback.unregister()
     icons.unregister()
-    pie_menu.unregister()
+    pie_menu_template.unregister()
