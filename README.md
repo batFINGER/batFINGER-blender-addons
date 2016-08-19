@@ -4,11 +4,13 @@
 **Blender Addon Drive animation with sound**
 ---
 
-[install](#install)
-[bake](#bake)
-[normalize](#normalize)
-[visualize](#visualize)
-[midi](#midi)
+[Install](#install)&nbsp;&nbsp;
+[Add Sound](#add_sound)&nbsp;&nbsp;
+[Bake](#bake)&nbsp;&nbsp;
+[Normalize](#normalize)&nbsp;&nbsp;
+[NLA Stack](#nla_stack)&nbsp;&nbsp;
+[Visualize](#visualize)&nbsp;&nbsp;
+[Midi](#midi)&nbsp;&nbsp;
 
 
 ---
@@ -22,6 +24,17 @@ Open the zip file from github in your favourite archive program.  Move the `soun
 
 [back to top](#sound_drivers)
 
+
+---
+**Add a Speaker and Sound<a name="add_sound"></a>**
+
+---
+
+Speaker Objects have been used as they are a convient way to store a sound in a blend file.  To get started add a speaker to the scene, go to the Properties window data panel and select a sound.  Speaker vismode options will become available as sounds are baked.
+
+
+[back to top](#sound_drivers)
+
 ---
 **Bake to multiple frequencies<a name="bake"></a>**
 
@@ -31,6 +44,8 @@ Only need to select the start and end frequencies to bake across a range.  By de
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/bake.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/bake.png" height="200" ></a>
 
 [back to top](#sound_drivers)
+
+
 
 ---
 **Normalize Actions<a name="normalize"></a>**
@@ -42,7 +57,6 @@ Automatically makes the range of the action [0, 1] after baking using fcurve mod
 <a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/normalize.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/normalize.png" height="200" ></a>
 
 [back to top](#sound_drivers)
-
 
 
 ---
@@ -60,6 +74,16 @@ _Image: Visualisers in the 3d view, graph editor and timeline"_
 
 [back to top](#sound_drivers)
 
+
+---
+**NLA Stack<a name="nla_stack"></a>**
+
+---
+
+Bake or copy actions and add to the outcome using the NLA editor. Actions are automatically added to the NLA stack on baking. The action in the action slot ( assigned action to speaker) is the active action.  Other actions are saved (stacked) and actively take place in the animation. For example an action can be copied, then normalized to [radians(-180), radians(180)] to use this channel as a driver target for rotation properties.
+<a href="https://github.com/batFINGER/sound-bake-drivers/wiki/images/nla.png"><img src="https://github.com/batFINGER/sound-bake-drivers/wiki/images/nla.png" height="200" ></a>
+
+[back to top](#sound_drivers)
 
 ---
 **Make Visualisers Quickly<a name="visualize"></a>**
