@@ -31,33 +31,35 @@ bl_info = {
     "support": 'TESTING',
     "category": "Animation"}
 
-mods = ("screen_panels",
-        "sounddriver",
-        "driver_panels",
-        "driver_manager",
-        "speaker",
-        "sound",
-        "midi",
-        "visualiser",
-        "Equalizer",
-        "EqMenu",
-        "NLALipsync",
-        "filter_playback",
-        "utils",
-        "graph",
-        "BGL_draw_visualiser",
-        "presets",
-        "pie_menu_template",
-        "icons")
+mod_names = ("screen_panels",
+             "sounddriver",
+             "driver_panels",
+             "driver_manager",
+             "speaker",
+             "sound",
+             "midi",
+             "visualiser",
+             "Equalizer",
+             "EqMenu",
+             "NLALipsync",
+             "filter_playback",
+             "utils",
+             "graph",
+             "BGL_draw_visualiser",
+             "presets",
+             "pie_menu_template",
+             "icons")
 
+mods = [__import__("%s.%s" % (__name__, name), {}, {}, name) for name in mod_names]
 if "bpy" in locals():
     import imp
     for mod in mods:
-        exec("imp.reload(%s)" % mod)
+        imp.reload(mod)
+        #exec("imp.reload(%s)" % mod)
 else:
     for mod in mods:
-        exec("from . import %s" % mod)
-
+        from . import mod
+        #exec("from . import %s" % mod)
 
 import bpy
 from rna_keymap_ui import draw_kmi
@@ -177,37 +179,13 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             row.label(str(akm))
         ''' 
 def register():
+    for mod in mods:
+        if hasattr(mod, "register"):
+            mod.register()
     register_class(SpeakerToolsAddonPreferences)
-    sounddriver.register()
-    driver_panels.register()
-    speaker.register()
-    sound.register()
-    midi.register()
-    visualiser.register()
-    Equalizer.register()
-    EqMenu.register()
-    NLALipsync.register()
-    presets.register()
-    graph.register()
-    BGL_draw_visualiser.register()
-    filter_playback.register()
-    icons.register()
-    pie_menu_template.register()
 
 def unregister():
+    for mod in mods:
+        if hasattr(mod, "unregister"):
+            mod.unregister()
     unregister_class(SpeakerToolsAddonPreferences)
-    sounddriver.unregister()
-    speaker.unregister()
-    sound.unregister()
-    midi.unregister()
-    visualiser.unregister()
-    driver_panels.unregister()
-    Equalizer.unregister()
-    EqMenu.unregister()
-    NLALipsync.unregister()
-    presets.unregister()
-    graph.unregister()
-    BGL_draw_visualiser.unregister()
-    filter_playback.unregister()
-    icons.unregister()
-    pie_menu_template.unregister()
