@@ -23,8 +23,7 @@ bl_info = {
     "location": "Properties > Speaker > Toolshelf",
     "description": "Drive Animations with baked sound files",
     "warning": "Still in Testing",
-    "wiki_url": "http://wiki.blender.org/index.php/\
-                User:BatFINGER/Addons/Sound_Drivers",
+    "wiki_url": "https://github.com/batFINGER/batFINGER-blender-addons/wiki/sound-drivers", 
     "version": (3, 0),
     "blender": (2, 7, 6),
     "tracker_url": "",
