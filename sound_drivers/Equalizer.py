@@ -503,46 +503,6 @@ def defaultPanels(regflag):
         bpy.utils.unregister_class(DATA_PT_custom_props_speaker)
 
 
-def play_live(self, context):
-    speakers = OLDSettingsOperator.speakers
-    if self.play:
-        if self not in speakers:
-            speakers.append(self)
-    return None
-
-
-# pretty sure this can be trashed.
-class OLDSettingsOperator(bpy.types.Operator):
-    bl_idname = "sound_tools.vismode_set"
-    bl_label = "Vismode Settings"
-
-    _timer = None
-    speakers = []
-
-    def modal(self, context, event):
-        if event.type == 'ESC':
-            return self.cancel(context)
-
-        if event.type == 'TIMER':
-            for speaker in OLDSettingsOperator.speakers:
-                speaker.vismode = speaker.vismode
-        return {'PASS_THROUGH'}
-
-    def execute(self, context):
-        wm = context.window_manager
-        wm.modal_handler_add(self)
-        OLDSettingsOperator.speakers = [speaker
-                                       for speaker in bpy.data.speakers
-                                       if speaker.play == True]
-
-        self._timer = wm.event_timer_add(0.1, context.window)
-        return {'RUNNING_MODAL'}
-
-    def cancel(self, context):
-        context.window_manager.event_timer_remove(self._timer)
-        return {'CANCELLED'}
-
-
 class SoundToolSettings(PropertyGroup):
     show_vis = BoolProperty(default=True, description="Show Visualiser")
     use_filter = BoolProperty(default=False,
@@ -611,16 +571,18 @@ def dummy(self, context):
 def vismode_panel_items(self, context):
     # if is_baking then only show bake panel
     #print("PANEL ITEMS", self, context.scene)
+    userprefs = context.user_preferences.addons[__package__].preferences
+    midiprefs = userprefs.addons["midi"].preferences
+    midi_support = userprefs.addons["midi"].enabled
     if bpy.types.BakeSoundPanel.baking:
         return [("BAKE", "BAKE", "Bake Sound to FCurves", 'FCURVE', 64)]
     
     pv = [("SPEAKER", "SPEAKER", "Edit Speaker properties", 'SPEAKER', 1),
           ("SOUND", "SOUND", "Edit sound properties", 'SOUND', 2)]
-    midi_mode = True
-    if midi_mode:
-        from sound_drivers.icons import preview_collections
-        pcoll = preview_collections["main"]
-        icon = pcoll["midi"]
+
+    if midi_support and midiprefs.midi_support:
+        from sound_drivers.icons import get_icon
+        icon = get_icon("main", "midi")
 
         pv.append(
           ("MIDI", "MIDI", "Associate a midi file", icon.icon_id, 128))
@@ -709,7 +671,6 @@ def register():
             PointerProperty(type=SoundToolSettings)
 
     bpy.types.Action.show_freq = BoolProperty(default=True)
-    #bpy.utils.register_class(OLDSettingsOperator)
     bpy.utils.register_class(OLDSoundVisualiserPanel)
     bpy.app.handlers.load_post.append(InitSoundTools)
     if ("GetLocals" not in bpy.app.driver_namespace 
@@ -722,7 +683,6 @@ def unregister():
     defaultPanels(True)
     bpy.utils.unregister_class(SoundChannels)
     bpy.utils.unregister_class(OLDSoundVisualiserPanel)
-    #bpy.utils.unregister_class(OLDSettingsOperator)
     bpy.utils.unregister_class(SoundToolSettings)
 
     bpy.app.handlers.load_post.remove(InitSoundTools)

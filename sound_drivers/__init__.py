@@ -31,35 +31,51 @@ bl_info = {
     "support": 'TESTING',
     "category": "Animation"}
 
-mod_names = ("screen_panels",
-             "sounddriver",
-             "driver_panels",
-             "driver_manager",
-             "speaker",
-             "sound",
-             "midi",
-             "visualiser",
-             "Equalizer",
-             "EqMenu",
-             "NLALipsync",
-             "filter_playback",
-             "utils",
-             "graph",
-             "BGL_draw_visualiser",
-             "presets",
-             "pie_menu_template",
-             "icons")
+#reload_flag = "bpy" in locals()
+reload_flag = True
 
-mods = [__import__("%s.%s" % (__name__, name), {}, {}, name) for name in mod_names]
-if "bpy" in locals():
-    import imp
-    for mod in mods:
-        imp.reload(mod)
-        #exec("imp.reload(%s)" % mod)
-else:
-    for mod in mods:
-        from . import mod
-        #exec("from . import %s" % mod)
+utilities_names = (
+             "subaddon",
+             "utils",
+             "screen_panels",
+        )
+
+subaddon_names = (
+             ("sounddriver", True),
+             ("driver_panels", True),
+             ("driver_manager", True), 
+             ("speaker", True),
+             ("sound", True),
+             ("midi", True),
+             ("visualiser", True),
+             ("Equalizer", True),
+             ("EqMenu", True),
+             ("NLALipsync", True),
+             ("filter_playback", True),
+             ("graph", True),
+             ("BGL_draw_visualiser", True),
+             ("presets", True),
+             ("pie_menu_template", True),
+             ("icons", True),
+             )
+
+#mods = [__import__("%s.%s" % (__name__, name), {}, {}, name) for name in submod_names]
+# use importlib for imports
+from importlib import import_module, reload as reload_module
+# dictionary of utilities modules
+utilities = {}
+for name in utilities_names:
+    mod = import_module("%s.%s" % (__package__, name))
+    if reload_flag:
+        print("RELOAD", mod)
+        reload_module(mod)
+    utilities[name] = mod
+
+SubAddon = getattr(utilities["subaddon"], "SubAddon")
+draw = getattr(utilities["subaddon"], "draw")
+create_addon_prefs = getattr(utilities["subaddon"], "create_addon_prefs")
+handle_registration = getattr(utilities["subaddon"], "handle_registration")
+
 
 import bpy
 from rna_keymap_ui import draw_kmi
@@ -67,8 +83,49 @@ from bpy.types import  AddonPreferences
 from bpy.props import StringProperty, BoolProperty, IntProperty
 from bpy.utils import register_class, unregister_class
 
+addons = {}
+def draw(self, context):
+    layout = self.layout
 
+    def icon(test):
+        if test:
+            icon = 'FILE_TICK'
+        else:
+            icon = 'ERROR'
+        return icon
+
+    layout = self.layout
+    # check that automatic scripts are enabled
+    UserPrefs = context.user_preferences
+    paths = UserPrefs.filepaths
+    dns = bpy.app.driver_namespace
+    row = layout.row()
+    row.prop(UserPrefs.system, "use_scripts_auto_execute")
+
+    if not UserPrefs.system.use_scripts_auto_execute:
+        row = layout.row()
+        row.label("Warning Will not work unless Auto Scripts Enabled",
+                  icon='ERROR')
+        return
+
+    cf = layout.column()
+
+    for subaddon in addons.values():
+        module = subaddon.module
+        info = subaddon.info
+        if not hasattr(module, "bl_info"):
+            continue
+        #TODO better name for mod
+        mod = getattr(self, subaddon.name, None)
+        box = cf.box()
+        subaddon.draw(box, context)
+
+subaddonprefs = {"bl_idname": __package__,
+                 "draw": draw,
+                 "addons": {},
+                 }
 class SpeakerToolsAddonPreferences(AddonPreferences):
+
     ''' Speaker Tools User Prefs '''
     bl_idname = "sound_drivers"
 
@@ -126,10 +183,10 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         row = layout.row()
         row.label("GetLocals in Driver Namespace", icon=icon("GetLocals" in
                                                               dns))
-        test = "DriverManager" in dns
         row = layout.row()
         row.label("DriverManager Started", icon=icon(test))
         row = layout.row()
+        test = "DriverManager" in dns
         if not test:
             row.operator("drivermanager.update")
         else:
@@ -178,14 +235,16 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         for akm in pie_menu.addon_keymaps:
             row.label(str(akm))
         ''' 
+addonprefs = None
 def register():
-    for mod in mods:
-        if hasattr(mod, "register"):
-            mod.register()
-    register_class(SpeakerToolsAddonPreferences)
+    print("SD REGO BABY")
+    addonprefs = create_addon_prefs(__package__, subaddon_names, subaddonprefs=subaddonprefs, addons=addons)
+    register_class(addonprefs)
+    print(addonprefs)
+    print(addonprefs.bl_idname)
+    handle_registration(True, addons)
 
 def unregister():
-    for mod in mods:
-        if hasattr(mod, "unregister"):
-            mod.unregister()
-    unregister_class(SpeakerToolsAddonPreferences)
+    if addonprefs:
+        unregister_class(addonprefs)
+    handle_registration(False, addons)

@@ -1,9 +1,22 @@
+bl_info = {
+    "name": "Midi Support",
+    "author": "batFINGER",
+    "location": "Properties > Speaker > MIDI",
+    "description": "Midi support for Sound Drivers",
+    "warning": "Still in Testing",
+    "wiki_url": "http://wiki.blender.org/index.php/\
+                User:BatFINGER/Addons/Sound_Drivers",
+    "version": (1, 0),
+    "blender": (2, 7, 6),
+    "tracker_url": "",
+    "icon": 'MIDI',
+    "support": 'TESTING',
+    "category": "Animation"}
+
 import bpy
 
-
 import json
-
-from bpy.types import PropertyGroup
+from bpy.types import PropertyGroup, Operator, AddonPreferences
 from bpy.utils import register_class, unregister_class
 # make a midifiles collection property on sound
 from bpy_extras.io_utils import ImportHelper
@@ -14,14 +27,53 @@ from bpy.props import (StringProperty,
                        PointerProperty,
                        EnumProperty)
                        
-from bpy.types import Operator
-
 from sound_drivers.utils import(getSpeaker,
                                 set_channel_idprop_rna,
                                 unique_name,
                                 scale_actions,
                                 nla_drop)
+
 from sound_drivers.presets import note_items, midi_instruments
+
+# Using addonpreset system to save usersettings on a submodulare basis
+
+class MIDIAddonPreferences(AddonPreferences):
+    ''' MIDI Prefs '''
+    bl_idname = __name__
+
+    @property
+    def midi_support(self):
+        '''
+        check if there is smf midi support using importlib.util.find_spec
+        '''
+        import sys
+        if self.smf_dir and self.smf_dir not in sys.path:
+            sys.path.append(self.smf_dir)
+        from importlib.util import find_spec 
+        return find_spec("smf") is not None
+
+
+    smf_dir = StringProperty(
+            name="smf (midi) python path",
+            description="folder where smf is installed",
+            subtype='DIR_PATH',
+            )
+
+    def draw(self, context):
+        layout = self.layout
+        # check that automatic scripts are enabled
+        
+        # midi support
+        if True: # self.midi_support:
+            row = layout.row()
+            row.label("midi_support", icon='FILE_TICK' if self.midi_support else 'ERROR')
+            row = layout.row()
+            row.enabled = not self.midi_support
+            row.prop(self, "smf_dir")
+            row = layout.row()
+            op = row.operator("wm.url_open", icon='INFO', text="GitHub PySMF Project (Cython)")
+            op.url="https://github.com/dsacre/pysmf"
+
 
 notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 octaves = range(-1, 10)
@@ -396,10 +448,10 @@ class SD_MIDIFilesPanel(bpy.types.Panel):
         return getattr(sp, "sound", False) and 'MIDI' in getattr(sp, "vismode", [])
 
     def draw_header(self, context):
-        from sound_drivers.icons import preview_collections
-        pcoll = preview_collections["main"]
-        icon = pcoll["midi"]
+        from sound_drivers.icons import get_icon
+        icon = get_icon("main", "midi")
         self.layout.label("", icon_value=icon.icon_id)
+
     def draw(self, context):
         sp = getSpeaker(context)
         #sound = sp.sound
@@ -445,10 +497,6 @@ def register():
     regdic()
     register_class(BakeMIDI)
     register_class(SD_MIDIFilesPanel)
-    from os import path
-
-    icon_path = path.dirname(__file__)
-    print("ICON PATH", icon_path)
 
 
 def unregister():

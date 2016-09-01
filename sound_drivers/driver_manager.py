@@ -1,4 +1,20 @@
+bl_info = {
+    "name": "Driver Manager",
+    "author": "batFINGER",
+    #"location": "",
+    "description": "Manage Drivers across blend.",
+    "warning": "Still in Testing",
+    "wiki_url": "http://wiki.blender.org/index.php/\
+                User:BatFINGER/Addons/Sound_Drivers",
+    "version": (1, 1),
+    "blender": (2, 7, 6),
+    "tracker_url": "",
+    "icon": 'DRIVER',
+    "support": 'TESTING',
+    "category": "Animation"}
 import bpy
+from bpy.types import AddonPreferences
+from bpy.props import IntProperty
 from sound_drivers.utils import (bpy_collections,
                                  get_icon,
                                  format_data_path,
@@ -14,8 +30,57 @@ from sound_drivers.icons import icon_value
 from mathutils import Vector, Color, Euler, Quaternion
 from math import sqrt, degrees
 
+class DriverManagerAddonPreferences(AddonPreferences):
+    ''' Driver Manager Prefs '''
+    bl_idname = __name__
 
-icon_value = bpy.types.UILayout.icon 
+    driver_manager_update_speed = IntProperty(
+                                  name="Driver Manager Update Speed",
+                                  min=1,
+                                  max=100,
+                                  description="Update timer, lower value = faster updates, higher value slow self update use refresh",
+                                  default=10)
+
+
+    def draw_all_drivers(self, context):
+        layout = self.layout
+        dm = context.driver_manager
+        dic = dm.get_filter_dic()
+        for collection in dic:
+            layout.label(collection)
+            collectionbox = layout.box()
+            for object in dic[collection]:
+                objectrow = collectionbox.row()
+                objectrow.label(object)
+                
+                #objectrow.label(strdic[collection][object])
+                driverscol = collectionbox.column()
+                #for dp in dic[collection][object]:
+                    #driverscol.label(dp)
+                dm.draw_layout(collectionbox.column(), context, dic[collection][object])
+    def draw(self, context):
+        def icon(test):
+            if test:
+                icon = 'FILE_TICK'
+            else:
+                icon = 'ERROR'
+            return icon
+
+        layout = self.layout
+        test = getattr(context, "driver_manager", None)
+        row = layout.row()
+        row.label("DriverManager Started", icon=icon(test))
+        row = layout.row()
+        if not test:
+            row.operator("drivermanager.update")
+        else:
+            row.prop(self, "driver_manager_update_speed", slider=True)
+            row = layout.row()
+            dm = context.driver_manager
+            row.label("There are %d drivers in blend" % len(dm.all_drivers_list))
+            self.draw_all_drivers(context)
+
+#icon_value = bpy.types.UILayout.icon 
 
 # need to seperate driver from sounddriver.
 class Driver:
@@ -1130,8 +1195,9 @@ class DriverManager():
             self.get_all_drivers_list()
 
     def check_added_drivers(self, obj, context=bpy.context):
-        prefs = context.user_preferences.addons['sound_drivers'].preferences
-        us = prefs.driver_manager_update_speed
+        prefs = context.user_preferences.addons[__package__].preferences
+        dmprefs = prefs.addons["driver_manager"].preferences
+        us = dmprefs.driver_manager_update_speed
         self.ticker += 1
         if self.ticker <= us: # REFACTO FOR UPDATE SPEED
             return False
@@ -1570,7 +1636,7 @@ class DriverManager():
         #self.check_added_drivers(context.object)
 
     def panel_draw(self, panel, context):
-        if panel.search == "pose_bone_constraint":
+        if getattr(panel, "search", "") == "pose_bone_constraint":
             self.panel_posebone_constraint_draw(panel, context)
             return None
         def node_name(str):
@@ -1580,10 +1646,10 @@ class DriverManager():
 
         self.check_deleted_drivers()
         collection = getattr(panel, "collection", "NONE")
-        panel_context = getattr(panel, "context", "None")
+        panel_context = getattr(panel, "context", "object")
         search = getattr(panel,"search", "")
 
-        obj = getattr(context, panel_context)
+        obj = getattr(context, panel_context, None)
         if collection == "particles":
             obj = getattr(obj, "settings", None)
 
