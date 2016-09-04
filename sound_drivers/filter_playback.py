@@ -3,7 +3,11 @@ import bpy
 import aud
 
 from bpy.props import BoolProperty
-from sound_drivers.utils import getAction
+from sound_drivers.utils import getAction, getSpeaker
+from bpy.utils import register_class, unregister_class
+from bpy.types import Panel
+#from sound_drivers.sound_bake import BakeSoundPanel
+from math import sqrt
 
 bpy.types.Speaker.play_speaker = BoolProperty(default=False)
 
@@ -11,6 +15,113 @@ DBG = False
 
 sound_buffer = {}
 
+def showFilterBox(layout, context, speaker, action):
+    dns = bpy.app.driver_namespace
+    if action:
+        scene = context.scene
+        minf = -1
+        maxf = -1
+        if "row_height" not in action.keys():
+            return
+        scale = action["row_height"]
+        name = "Channel"
+        if "Channels" in action:
+            channels = action["Channels"]
+            name = channel_name = action["channel_name"]
+            minf = action["minf"]
+            maxf = action["maxf"]
+            MIN = action["min"]
+            MAX = action["max"]
+            start = action["start"]
+            end = action["end"]
+        else:
+            channels = len(action.fcurves)
+            minf = 0.0
+            MIN = 0.0
+            maxf = 0.0
+            MAX = 0.0
+            start = 0
+            end = channels
+
+        if start >= end:
+            end = start + 1
+        i = start
+        box = layout
+        row = box.row()
+        row.prop(speaker, "filter_sound", toggle=True)
+        #row = box.row()
+        #row.prop(scene, "sync_play", toggle=True, text="PLAY", icon="PLAY")
+        b = dns.get("ST_buffer")
+        h = dns.get("ST_handle")
+        if b and not h:
+            row = layout.row()
+            row.label("BUFFERING %s" % b, icon='INFO')
+        if b:
+            row = layout.row()
+            row.label("BUFFERED %s" % b, icon='INFO')
+        if h:
+            row = layout.row()
+            if not h.status:
+                row.label("Handle %s" % h.status, icon='INFO')
+            else:
+                row.label("Handle.position %d %0.2fs" % (h.status, h.position),
+                          icon='INFO')
+
+        row = box.row()
+        COLS = int(sqrt(channels))
+
+        sound_channel_id = "%s__@__%s" % (speaker.name, action.name)
+        sound_item = None
+        from sound_drivers.filter_playback import sound_buffer
+        if sound_buffer:
+            sound_item = sound_buffer.get(sound_channel_id)
+        filter_item = scene.sound_channels.get(sound_channel_id)
+        if filter_item is not None:
+            '''
+            row = box.row()
+            row.prop(filter_item, "buffered")
+            row = box.row()
+            row.prop(filter_item, "valid_handle")
+            '''
+            for i in range(start, end + 1):
+                cn = "channel%02d" % i
+                if not i % COLS:
+                    row = box.row()
+                col = row.column()
+                # BUGGY on speaker object
+                icon = 'OUTLINER_DATA_SPEAKER'
+                if sound_item and sound_item.get(cn):
+                    icon = 'OUTLINER_OB_SPEAKER'
+                col.prop(filter_item,
+                         cn,
+                         text="%s" % i,
+                         icon=icon,
+                         toggle=True)
+
+
+class FilterSoundPanel(Panel):
+    bl_label = "Filter Sound"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        speaker = getSpeaker(context)
+
+        return (speaker and 'OUT' in speaker.vismode)
+
+    def draw_header(self, context):
+        layout = self.layout
+        layout.label("", icon='FILTER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.enabled = not bpy.types.BakeSoundPanel.baking
+        speaker = getSpeaker(context)
+        action = getAction(speaker)
+        showFilterBox(layout, context, speaker, action)
 
 def dprint(str):
     global DBG
@@ -145,7 +256,6 @@ def ST__FT_filter_playback(scene):
             return None
 
         '''
-
 
 def mix_buffer(context):
     dprint("mix BUff")
@@ -298,9 +408,11 @@ def setup_filter_handlers():
 
 def register():
     #setup_filter_handlers()
+    register_class(FilterSoundPanel)
     bpy.app.driver_namespace["ST_setup_buffer"] = setup_buffer
 
 def unregister():
+    unregister_class(FilterSoundPanel)
     pass
     #setup_filter_handlers()
     #bpy.app.driver_namespace["ST_setup_buffer"] = setup_buffer

@@ -24,7 +24,7 @@ bl_info = {
     "description": "Drive Animations with baked sound files",
     "warning": "Still in Testing",
     "wiki_url": "https://github.com/batFINGER/batFINGER-blender-addons/wiki/sound-drivers", 
-    "version": (3, 0),
+    "version": (3, 1, 0),
     "blender": (2, 7, 6),
     "tracker_url": "",
     "support": 'TESTING',
@@ -40,22 +40,25 @@ utilities_names = (
         )
 
 subaddon_names = (
-             ("sounddriver", True),
-             ("driver_panels", True),
-             ("driver_manager", True), 
-             ("speaker", True),
-             ("sound", True),
-             ("midi", True),
-             ("visualiser", True),
-             ("Equalizer", True),
-             ("EqMenu", True),
-             ("NLALipsync", True),
-             ("filter_playback", True),
-             ("graph", True),
-             ("BGL_draw_visualiser", True),
-             ("presets", True),
-             ("pie_menu_template", True),
-             ("icons", True),
+             ("sounddriver", True, True),
+             ("driver_panels", True, True),
+             ("driver_manager", True, True), 
+             ("speaker", True, True),
+             ("sound", True, True),
+             ("midi", False, False),
+             ("visualiser", True, True),
+             ("sound_action", True, True),
+             ("soundaction_visualiser", False, False),
+             ("sound_bake", True, True),
+             ("sound_nla", True, True),
+             #("EqMenu", True, False), # GONE BABY GONE (orginal)
+             ("NLALipsync", True, True),
+             ("filter_playback", False, False),
+             ("graph", True, True),
+             ("BGL_draw_visualiser", False, False),
+             ("presets", True, True),
+             ("pie_menu_template", True, True),
+             ("icons", True, True),
              )
 
 #mods = [__import__("%s.%s" % (__name__, name), {}, {}, name) for name in submod_names]
@@ -112,8 +115,10 @@ def draw(self, context):
     for subaddon in addons.values():
         module = subaddon.module
         info = subaddon.info
+        '''
         if not hasattr(module, "bl_info"):
             continue
+        '''
         #TODO better name for mod
         mod = getattr(self, subaddon.name, None)
         box = cf.box()

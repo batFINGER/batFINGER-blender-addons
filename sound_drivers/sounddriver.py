@@ -21,7 +21,6 @@ from sound_drivers.utils import (getSpeaker,
                                  remove_draw_pend,
                                  )
 
-from sound_drivers.EqMenu import main
 from sound_drivers import debug
 
 from sound_drivers.driver_manager import DriverManager, SoundDriver
@@ -29,6 +28,64 @@ from sound_drivers.driver_manager import DriverManager, SoundDriver
 '''
 Update methods
 '''
+
+
+def main(self, context, edit_driver, speaker, action, channel_list):
+    if context is None or not len(channel_list):
+        return False
+
+    space = context.space_data
+    search = True
+    if action  is not None:
+        channel = action["channel_name"]
+    driver = edit_driver.fcurve
+
+    if driver:
+        all_channels, args = get_driver_settings(driver)
+        speaker_channels = [ch for ch in all_channels if
+                            ch.startswith(channel)]
+
+        diff = set(all_channels) - set(speaker_channels)
+        driver = driver.driver
+        s = driver.expression
+        d = s.find("SoundDrive")
+        if d > -1:
+            m = s.find(")", d) + 1
+            fmt = s.replace(s[d:m], "%s")
+        else:
+            fmt = "%s"
+
+        # remove vars
+        for ch in set(speaker_channels) - set(channel_list):
+            var = driver.variables.get(ch)
+            if var:
+                driver.variables.remove(var)
+
+        extravars = ""
+        if self.amplify != 1.0:
+            extravars += ",amplify=%0.4f" % self.amplify
+        if self.threshold != 0.0:
+            extravars += ",threshold=%0.4f" % self.threshold
+        if self.op != 'avg':
+            extravars += ",op='%s'" % self.op
+        channels = diff | set(channel_list)
+        channels_list = list(sorted(channels))
+        #channels_list = channels_list.sort()
+        ctxt = str(channels_list).replace("'", "").replace(" ", "")
+        new_expr = 'SoundDrive(%s%s)' % (ctxt, extravars)
+        new_expr = new_expr.replace("[,", "[")
+        if len(new_expr) < 256:
+            driver.expression = fmt % new_expr
+            for channel in channel_list:
+                var = driver.variables.get(channel)
+                if var is None:
+                    var = driver.variables.new()
+                var.type = "SINGLE_PROP"
+                var.name = channel
+                target = var.targets[0]
+                target.id_type = "SPEAKER"
+                target.id = speaker.id_data
+                target.data_path = '["%s"]' % channel
 
 
 def update_dm(self, context):
