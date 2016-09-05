@@ -39,7 +39,6 @@ def get_soundspeaker_list(self):
 bpy.types.Scene.soundspeakers = property(get_soundspeaker_list)
 
 def get_channel_names(self):
-    print("GCNames", self)
     channels = []
     if not self.sound:
         return [] # TODO change bugfix

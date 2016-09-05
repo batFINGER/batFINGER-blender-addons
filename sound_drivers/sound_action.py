@@ -1,3 +1,17 @@
+bl_info = {
+    "name": "Sound Action",
+    "author": "batFINGER",
+    "location": "View3D > Add > Speaker",
+    "description": "Sound Action",
+    "warning": "Still in Testing",
+    "wiki_url": "",
+    "version": (1, 0),
+    "blender": (2, 7, 7),
+    "tracker_url": "",
+    "icon": 'NONE',
+    "support": 'TESTING',
+    "category": "Animation",
+    }
 # <pep8-80 compliant>
 import bpy
 from bpy.app.handlers import persistent
@@ -13,14 +27,14 @@ from bl_ui.properties_data_speaker  import (DATA_PT_context_speaker,
                 DATA_PT_speaker, DATA_PT_cone, DATA_PT_distance,
                 DATA_PT_custom_props_speaker)
 
-from sound_drivers.utils import (get_driver_settings,
-                icon_from_bpy_datapath, getSpeaker, getAction,
+# TODO fix or prepend eg utils.getSpeaker
+from sound_drivers.utils import (getSpeaker, getAction,
+                                 copy_sound_action,
+                                 nla_drop,
                 set_channel_idprop_rna, f, get_channel_index, unique_name)
 
-#from sound_drivers.sound_bake import BakeSoundPanel
 from sound_drivers.filter_playback import (setup_buffer, play_buffer,
                 mix_buffer)
-# add drivers to the namespace
 
 @persistent
 def InitSoundTools(dummy):
@@ -39,15 +53,11 @@ def InitSoundTools(dummy):
         for speaker in bpy.data.speakers:
             speaker.filter_sound = False
 
-
 def live_speaker_view(scene):
     '''
     Update the visualiser in the PROPERTIES Panel
-
     this can be very heavy when animating so check if needed
-
     '''
-
     if len(scene.soundspeakers) == 0:
         return None
     if scene is None:
@@ -67,12 +77,9 @@ def live_speaker_view(scene):
                         return None
             if area.spaces.active.context == 'DATA':
                 area.tag_redraw()
-
     return None
 
 # DRIVER methods
-
-
 def local_grabber(index, locs, dm):
     '''
     dns = bpy.app.driver_namespace
@@ -196,6 +203,7 @@ class ChangeSoundAction(Operator):
             return {'CANCELLED'}
         soundaction = bpy.data.actions.get(self.action)
         if soundaction is not None:
+            from sound_drivers.sound import SoundVisMenu
             SoundVisMenu.bl_label = soundaction["channel_name"]
             speaker.animation_data.action = soundaction
             if self.channel:

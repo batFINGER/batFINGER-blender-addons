@@ -1,7 +1,22 @@
+bl_info = {
+    "name": "BGL Visualiser",
+    "author": "batFINGER",
+    "location": "View3D  Graph Editor  TimeLine",
+    "description": "Draw visual representation of sound bakes using BGL",
+    "warning": "Still in Testing",
+    "wiki_url": "",
+    "version": (1, 0),
+    "blender": (2, 7, 7),
+    "tracker_url": "",
+    "icon": 'NONE',
+    "support": 'TESTING',
+    "category": "Animation",
+    }
+
 import bpy
 import blf
 import bgl
-from bgl import *
+from bgl import * # TODO fix this laziness
 from mathutils import Vector
 from bpy.props import (BoolProperty,
                        IntProperty,
@@ -11,6 +26,7 @@ from bpy.props import (BoolProperty,
                        FloatVectorProperty,
                        CollectionProperty,
                        PointerProperty)
+
 from sound_drivers.utils import getAction, getSpeaker, interp
 from bpy.types import Panel, Operator, PropertyGroup
 from bpy.utils import register_class, unregister_class
@@ -30,8 +46,7 @@ def draw_sound_widgets(context, wlist):
         w.draw_action_header_text(speaker, action)
 
 class SupportedAreas():
-    # console added for testing purposes
-    screen_areas = ['VIEW_3D', 'NLA_EDITOR', 'GRAPH_EDITOR', 'SEQUENCE_EDITOR', 'TIMELINE', 'CONSOLE']
+    screen_areas = ['VIEW_3D', 'NLA_EDITOR', 'GRAPH_EDITOR', 'SEQUENCE_EDITOR', 'TIMELINE']
     pass
 
 class BGLWidget(SupportedAreas):
@@ -125,7 +140,7 @@ class BGLWidget(SupportedAreas):
         settings = context.sound_vis_areas.context
         if not getattr(settings, "is_enabled", False):
             return None
-        if not context.window_manager.bgl_draw_speaker:
+        if not getattr(context.window_manager, "bgl_draw_speaker", False):
             self.remove_handle()                        
             return None
 
@@ -144,7 +159,6 @@ class BGLWidget(SupportedAreas):
         return handle     
         
     def remove_handle(self):
-
         if self.handle:
             self.areatype.draw_handler_remove(self.handle, 'WINDOW') 
             self.handle = None   
@@ -702,8 +716,6 @@ class BGLDrawSpeaker(Operator):
     callbacks = []
 
     def modal(self, context, event):
-
-
         if event.type == 'TIMER':
             if not context.scene.bgl_draw_speaker:
                 
@@ -716,9 +728,6 @@ class BGLDrawSpeaker(Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
-        #wm = context.window_manager
-        #self.timer = wm.event_timer_add(0.1, context.window)
-        #wm.modal_handler_add(self)
         self.callbacks.append(BGL_SoundActionWidget(self, context, bpy.types.SpaceView3D))
         self.callbacks.append(BGL_SoundActionWidget(self, context, bpy.types.SpaceGraphEditor))
         self.callbacks.append(SD_NLATrackListWidget(self, context, bpy.types.SpaceNLA))
@@ -769,8 +778,6 @@ class BGL_Draw_VisualiserPanel(SupportedAreas, ScreenLayoutPanel, Panel):
         layout.enabled = context.screen.areas[index].type in self.screen_areas
         op.area_index = index
         
-        
-
     def draw(self, context):
         layout = self.layout
         self.draw_area_buttons(context)
@@ -816,8 +823,7 @@ class BGL_Draw_VisualiserPanel(SupportedAreas, ScreenLayoutPanel, Panel):
             box.prop(action_bgl, "color")
             box.prop(action_bgl, "height")
         '''
-        
- 
+
 class SoundVisAreaPanel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -839,7 +845,6 @@ class SoundVisAreaPanel(Panel):
         layout = self.layout
         layout.prop(sva, "loc")
         layout.prop(sva, "height")
-
 
 #class ScreenAreaAction(bpy.types.Screen):
 class ScreenAreaAction():
@@ -869,6 +874,8 @@ class ScreenAreaAction():
     def get_area(self, area):
         if area is None:
             return None
+        if not hasattr(self.screen, "sound_driver_areas"):
+            return None
         #look up 
         index, key = self.key(area)
         return self.screen.sound_driver_areas.get(key)
@@ -887,7 +894,6 @@ class ScreenAreaAction():
         store.action_name = action.name
         store.action_channel_name = action.get("channel_name", "")
 
-
 def get_action(self):
     if self.use_active_action:
         return getAction(bpy.context.scene.speaker)
@@ -900,8 +906,6 @@ def set_action(self, action):
     else:
         self.action_name = ""
         
-
-
 def start(self, context):
     if hasattr(bpy.types, "SoundActionViewBGL"):
         pass
@@ -913,10 +917,9 @@ def start(self, context):
             area.tag_redraw()
             for region in area.regions:
                 region.tag_redraw()
-               
         
 def update_graph(self, context):
-    print("UPDG", self.height)
+    #print("UPDG", self.height)
     if context.area.type == 'PROPERTIES':
         bpy.ops.graph.view_all_with_bgl_graph()
     return None
@@ -994,3 +997,5 @@ def unregister():
         SettingsPanel = getattr(bpy.types, "SD_SoundVis_PT_%s" % t, None)
         if SettingsPanel:
             unregister_class(SettingsPanel)
+    bpy.context.window_manager.bgl_draw_speaker = False
+    #del(bpy.types.WindowManager.bgl_draw_speaker)

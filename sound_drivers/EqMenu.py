@@ -29,76 +29,6 @@ def dprint(str):
         print(str)
 
 
-def speaker_filter_sound(self, context):
-    if not self.filter_sound:
-        remove_filter_handlers()
-        return
-    # stop playback and go to frame 1
-    screen = context.screen
-    scene = context.scene
-    filter_sound(self, self.animation_data.action, context)
-    playing = screen.is_animation_playing
-    if playing:
-        #this will stop it
-        bpy.ops.screen.animation_play()
-    scene.frame_set(1)
-
-    self.muted = self.filter_sound
-    h = bpy.app.driver_namespace.get("ST_handle")
-    if not self.filter_sound:
-        if h and h.status:
-            h.stop()
-        return None
-
-    b = bpy.app.driver_namespace.get("ST_buffer")
-    if not b:
-        if setup_buffer(context):
-            b = bpy.app.driver_namespace["ST_buffer"] = mix_buffer(context)
-
-    if not h:
-        bpy.app.driver_namespace["ST_handle"] = play_buffer(b)
-    if playing:
-        #this will restart it
-        bpy.ops.screen.animation_play()
-    setup_filter_handlers()
-    return None
-
-
-def get_sound_channel(scene, name):
-    sound_channel = scene.sound_channels.get(name)
-    if not sound_channel:
-        sound_channel = scene.sound_channels.add()
-        sound_channel.name = name
-    return sound_channel
-
-
-def filter_sound(speaker, action, context):
-    #print("FILTER SOUND", self.filter_sound)
-    scene = context.scene
-
-    name = "%s__@__%s" % (speaker.name, action.name)
-    #speaker_filter_sound(speaker, context)
-    if True:
-
-        sound_channel = get_sound_channel(scene, name)
-        if scene.use_preview_range:
-            frame_start = scene.frame_preview_start
-            frame_end = scene.frame_preview_end
-        else:
-            frame_start = scene.frame_start
-            frame_end = scene.frame_end
-        fs = max(action.frame_range.x, frame_start)
-        # have to go back to start to enable effect
-        #scene.frame_set(fs)
-
-        '''
-        for i in action["Channels"]
-            ch = "channel%02d" % i
-            if getattr(sound_channel, ch) != sw:
-                setattr(sound_channel, ch, sw)
-        '''
-
-
 def sync_play(self, context):
     screen = context.screen
     if screen.is_animation_playing:
@@ -155,8 +85,6 @@ class ContextSpeakerMenu(bpy.types.Menu):
 def register():
 
     #bpy.utils.register_class(SimpleOperator)
-    bpy.types.Speaker.filter_sound = BoolProperty(default=False,
-                                                  update=speaker_filter_sound)
     #bpy.types.Scene.sync_play =  BoolProperty(default=False, update=sync_play)
     bpy.utils.register_class(ContextSpeakerSelectMenu)
     #bpy.utils.register_class(AddCustomSoundDriverToChannel)

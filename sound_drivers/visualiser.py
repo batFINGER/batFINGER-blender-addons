@@ -181,7 +181,6 @@ class Visualiser:
     def __init__(self):
         pass
 
-
 class CreateSoundVisualiserPanel(Panel):
     """Create a sound visualiser from baked sound"""
     bl_category = "SoundDrive"

@@ -97,8 +97,8 @@ midifile = {}
 def peek_midi_file(context, filepath, use_some_setting):
     print(filepath)
     prefs = context.user_preferences.addons["sound_drivers"].preferences
-    import sys
-    sys.path.append(prefs.smf_dir)
+    #import sys
+    #sys.path.append(prefs.smf_dir)
     import smf
     pin_id = getattr(context.space_data, "pin_id", None)
     sp = pin_id if pin_id is not None else context.object.data
@@ -174,8 +174,8 @@ def peek_midi_file(context, filepath, use_some_setting):
 def read_midi_file(context, filepath, use_some_setting):
     print(filepath)
     prefs = context.user_preferences.addons["sound_drivers"].preferences
-    import sys
-    sys.path.append(prefs.smf_dir)
+    #import sys
+    #sys.path.append(prefs.smf_dir)
     import smf
     pin_id = context.space_data.pin_id
     sp = pin_id if pin_id is not None else context.object.data
