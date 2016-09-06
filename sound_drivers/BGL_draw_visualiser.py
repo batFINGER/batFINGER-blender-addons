@@ -761,8 +761,9 @@ class BGL_Draw_VisualiserPanel(SupportedAreas, ScreenLayoutPanel, Panel):
 
     @classmethod
     def poll(cls, context):
+        speaker = getSpeaker(context)
         screen_areas = [a.type for a in context.screen.areas if a.type in cls.screen_areas]
-        return context.scene.speaker is not None and len(screen_areas)
+        return speaker is not None and len(screen_areas) and 'VISUAL' in speaker.vismode
     
     def draw_header(self, context):
         layout = self.layout

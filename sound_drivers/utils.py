@@ -757,7 +757,7 @@ def scale_actions(action1, action2):
     if action1 is None or action2 is None:
         return None
     scale = action1.frame_range.length / action2.frame_range.length
-    print(scale)
+    #print(scale)
     for fcurve in action2.fcurves:
         for kfp in fcurve.keyframe_points:
             kfp.co.x *= scale

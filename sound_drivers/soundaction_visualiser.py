@@ -3,6 +3,7 @@ from bpy.types import Panel, Operator
 from bpy.props import StringProperty
 from sound_drivers.sound_action import SoundActionMethods
 from bpy.utils import register_class, unregister_class
+from sound_drivers.utils import getAction, getSpeaker
 
 class VisualiserOptions(Operator):
     """Visualiser Options"""

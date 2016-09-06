@@ -770,7 +770,6 @@ class BakeSoundAction(SoundActionBaseOperator, Operator):
         #context.area.header_text_set()
         context.window_manager.event_timer_remove(self._timer)
         print("BAKING CANCELLED.")
-        return None
         return {'CANCELLED'}
 
 class SD_ContinueBakeOperator(Operator):

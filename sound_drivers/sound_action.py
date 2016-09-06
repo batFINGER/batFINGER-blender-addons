@@ -68,15 +68,18 @@ def live_speaker_view(scene):
 
     if 'VISUAL' not in scene.speaker.vismode:
         return None
-
-    for area in bpy.context.screen.areas:
-        if area.type == 'PROPERTIES':
-            if not (area.spaces.active.pin_id is not None and area.spaces.active.pin_id == scene.speaker):
-                if scene.objects.active is not None:
-                    if scene.objects.active.type != 'SPEAKER':
-                        return None
-            if area.spaces.active.context == 'DATA':
-                area.tag_redraw()
+    
+    #for window in wm.windows:
+    for window in bpy.context.window_manager.windows:
+        screen = window.screen
+        for area in screen.areas:
+            if area.type == 'PROPERTIES':
+                if not (area.spaces.active.pin_id is not None and area.spaces.active.pin_id == scene.speaker):
+                    if scene.objects.active is not None:
+                        if scene.objects.active.type != 'SPEAKER':
+                            return None
+                if area.spaces.active.context == 'DATA':
+                    area.tag_redraw()
     return None
 
 # DRIVER methods
@@ -850,7 +853,6 @@ class DriverMenu(bpy.types.Menu):
     def draw(self, context):
         print("draw")
 
-
 def action_normalise_set(self, context):
     # add normal envelope
     '''
@@ -871,7 +873,7 @@ def action_normalise_set(self, context):
         return None
     speaker_rna = self.get('rna')
     speaker_rna = eval(speaker_rna)
-    print(speaker_rna.keys())
+    #print(speaker_rna.keys())
 
     def add_normal_envelope(fcurve, type):
         '''
