@@ -41,10 +41,8 @@ class DriverPanelsAddonPreferences(AddonPreferences):
 
         layout = self.layout
         row = layout.row()
+        # TODO make this change the category of all panels
         row.prop(self, "toolbar_category")
-        row.label("HOOHA")
-        row = layout.row()
-        row.label("HOOHA")
 
 
 class DRIVER_UL_driven_objects(bpy.types.UIList):    
