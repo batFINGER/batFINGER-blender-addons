@@ -31,6 +31,7 @@ from bl_ui.properties_data_speaker  import (DATA_PT_context_speaker,
 from sound_drivers.utils import (getSpeaker, getAction,
                                  copy_sound_action,
                                  nla_drop,
+                                 get_context_area,
                 set_channel_idprop_rna, f, get_channel_index, unique_name)
 
 from sound_drivers.filter_playback import (setup_buffer, play_buffer,
