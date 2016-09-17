@@ -89,20 +89,16 @@ def local_grabber(index, locs, dm):
     dns = bpy.app.driver_namespace
     dm = dns.get("DriverManager")
     '''
-    #print("localgrabber", locs)
     if dm is None:
         return 0.0
     ed = dm.find(index)
 
     if ed is not None:
-        #print("found and settling", index, ed)
         setattr(ed, "locs", locs)
-        #print(ed.driven_object)
     return 0.0
 
 
 def SoundDrive(channels, **kwargs):
-    #print("SDLOCS:",locals())
     if isinstance(channels, float):
         channel = channels
     elif isinstance(channels, list):
@@ -198,7 +194,29 @@ class ChangeSoundAction(Operator):
     bl_idname = "soundaction.change"
     bl_label = "Load Action"
     action = StringProperty(default="", options={'SKIP_SAVE'})
+    #action = StringProperty(default="")
     channel = StringProperty(default="", options={'SKIP_SAVE'})
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        speaker = getSpeaker(context)
+        return speaker is not None
+
+    def draw(self, context):
+        speaker = getSpeaker(context)
+        layout = self.layout
+        if not speaker:
+            return {'CANCELLED'}
+        soundaction = getAction(speaker)
+
+        soundaction = bpy.data.actions.get(self.action, None)
+        #soundaction = bpy.data.actions.get(self.action)
+        #layout.enabled = False
+        #layout.menu("soundtest.menu", text=soundaction.get("channel_name", "AA"))
+        layout.enabled = True
+        layout.operator("wm.call_menu", text=soundaction.get("channel_name", "AA"), emboss=True).name = "soundtest.menu"
+
 
     def execute(self, context):
         #speaker = context.scene.speaker
@@ -223,10 +241,11 @@ class ChangeSoundAction(Operator):
 class CopySoundAction(SoundActionBaseOperator, Operator):
     """Copy Action with new channel name"""
     bl_idname = "soundaction.copy"
-    bl_label = "Action Copy"
+    bl_label = "Sound Action Copy"
     new_channel_name = StringProperty(default="AA")
     nla_drop = BoolProperty(default=True)
     sd_tweak_type = 'COPIED'
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -252,8 +271,86 @@ class CopySoundAction(SoundActionBaseOperator, Operator):
             #tw.type = "COPIED FROM %s" % original_action.name
             return {'FINISHED'}
 
-
         return {'CANCELLED'}
+
+class SoundSwitchAction(SoundActionBaseOperator, Operator):
+    """Create a switch action from current"""
+    bl_idname = "soundaction.copy_to_switches"
+    bl_label = "SoundAction Threshold Copy to Switch"
+    new_channel_name = StringProperty(default="AA")
+    nla_drop = BoolProperty(default=True)
+    threshold = IntProperty(default=50, min=1, max=99,
+                              soft_min=10,
+                              soft_max=80,
+                              name="Threshold",
+                              description="switch = 1 if val > threshold else 0",
+                              )
+                              
+    bl_options = {'REGISTER', 'UNDO'}
+    sd_tweak_type = 'COPIED_SWITCH'
+
+    @classmethod
+    def poll(cls, context):
+        speaker = getSpeaker(context)
+        return (speaker is not None)
+
+    def execute(self, context):
+        def evaluate(co, channel, mx):
+            #co = p.co
+            x, y  = co.x, 1 if co.y > self.threshold / 100 * mx else 0
+            #p.co = (x, y)
+            return (x, y)
+        
+        speaker = getSpeaker(context)
+        original_action = speaker.animation_data.action
+        self.new_channel_name = unique_name(speaker.channels, original_action.get("channel_name", "AA"))
+        newaction = copy_sound_action(speaker, self.new_channel_name)
+        ch = newaction["channel_name"]
+        channels = [c for sp in context.scene.objects if sp.type == 'SPEAKER' for c in sp.data.channels]
+
+        if newaction is None:
+            return {'CANCELLED'}
+
+        start, end = newaction.frame_range
+        speaker.animation_data.action = newaction
+        speaker.sound.bakeoptions.channel_name =\
+                unique_name(channels, self.new_channel_name)
+
+        rna = eval(newaction["rna"])
+
+        fcurves = [f for f in newaction.fcurves]    
+        for fcurve in fcurves:
+            dp = fcurve.data_path
+            channel = fcurve.data_path.strip("\"'[]")
+            #print(rna[channel])
+            pts = [x for  p in fcurve.sampled_points for x in evaluate(p.co, channel, rna[channel]["b"])]
+            #print(pts)
+            rna[channel]["a"] = 0
+            rna[channel]["b"] = 1
+            newaction["min"] =  rna[channel]["min"] = rna[channel]["soft_min"] = 0
+            newaction["max"] =  rna[channel]["max"] = rna[channel]["soft_max"] = 1
+            newaction.fcurves.remove(fcurve)
+            new_fcurve = newaction.fcurves.new(dp, action_group=ch)
+            new_fcurve.extrapolation = 'CONSTANT'
+            new_fcurve.keyframe_points.add(len(pts) // 2)
+            new_fcurve.keyframe_points.foreach_set("co", pts)
+            for p in new_fcurve.keyframe_points:
+                p.interpolation = 'CONSTANT'
+            new_fcurve.convert_to_samples(start, end)
+
+        newaction["rna"] = str(rna)
+        speaker['_RNA_UI'].update(rna)
+
+        if self.nla_drop:
+            # need to override context to use.. cbf'd
+            nla_drop(speaker, newaction, 1, self.new_channel_name)
+
+        # testcode TODO
+        self.add_to_tweaks(newaction)
+        newaction.normalise = 'NONE'
+        #tw.type = "COPIED FROM %s" % original_action.name
+        return {'FINISHED'}
+
 
 class UnbakeSoundAction(SoundActionBaseOperator, Operator):
     '''Unbake'''
@@ -423,24 +520,27 @@ class SD_ReBakeTweak(SoundActionBaseOperator, Operator):
                       default = 'CLEAN',
                       )
     threshold = FloatProperty(default=0.0001, min=0.0001 , max=0.1, step=0.001) 
+
+    def check(self, context):
+        return True
+
     def draw(self, context):
         layout = self.layout
+        layout.prop(self, "type", expand=True)
         box = layout
         row = box.row()
 
-        row = box.row()
-        row.label(self.type)
         #box.seperate()
         if self.type == 'CLEAN':
             box.prop(self, "threshold", slider=True)
             
         #layout.operator("ed.undo_history")
-        layout.operator(self.bl_idname, text="Done")
+        #layout.operator(self.bl_idname, text="Done")
 
     def invoke(self, context, event):
         wm = context.window_manager
         if self.type in ['CLEAN']:
-            return  wm.invoke_props_popup(self, event)
+            return  wm.invoke_props_dialog(self)
         else:
             return self.execute(context)
         #return  wm.invoke_popup(self)
@@ -462,25 +562,17 @@ class SD_ReBakeTweak(SoundActionBaseOperator, Operator):
         if self.type == 'CLEAN':
             bpy.ops.graph.clean(c, threshold=self.threshold)
             print("clean")
-            
-            
             #hs.threshold = self.threshold
-            
              
         elif self.type == 'SMOOTH':
             bpy.ops.graph.smooth(c)
             print("smooth")
 
-            #hs.type = self.type       
-        
-        #hs.fcurve_count = len(action.fcurves)
-        #hs.keyframe_count = count_keyframes(action)   
         self.sd_tweak_type = self.type
         self.add_to_tweaks(action)        
         return {'FINISHED'} 
 
 class SoundActionMethods:
-    #icons = ['BLANK1', 'CHECKBOX_DEHLT', 'MESH_PLANE', 'ERROR']
     icons = ['BLANK1', 'CHECKBOX_DEHLT', 'MESH_PLANE', 'OUTLINER_OB_LATTICE']
     icontable = []
     vismode = 'NONE'
@@ -594,6 +686,10 @@ class SoundActionMethods:
         new_channel_name = unique_name(channels, bakeoptions.channel_name)
         op = sub.operator("soundaction.copy", text="Copy to Channel %s" % new_channel_name)
         op.new_channel_name = new_channel_name
+        col = layout.column()
+        col.operator_context = 'INVOKE_DEFAULT'
+        op = col.operator("soundaction.copy_to_switches")
+
         '''
         row = layout.row()
         op = row.operator("sound.bake_animation")
@@ -684,7 +780,6 @@ class SoundActionMethods:
                 continue
             cf.prop(speaker, '["%s"]' % channel, slider=True,
                        emboss=True, text="")
-
 
     def EBT(self, context):
         layout = self.layout
@@ -852,7 +947,7 @@ class DriverMenu(bpy.types.Menu):
     bl_label = "Select a Driver"
 
     def draw(self, context):
-        print("draw")
+        pass
 
 def action_normalise_set(self, context):
     # add normal envelope
@@ -874,7 +969,6 @@ def action_normalise_set(self, context):
         return None
     speaker_rna = self.get('rna')
     speaker_rna = eval(speaker_rna)
-    #print(speaker_rna.keys())
 
     def add_normal_envelope(fcurve, type):
         '''
@@ -908,7 +1002,6 @@ def action_normalise_set(self, context):
                 if self.normalise == 'NONE':
                     continue
                 m.reference_value = 0.0
-                print(speaker_rna[channel])
                 m.default_min = self["min"]\
                                 if not i else speaker_rna[channel]["min"]
                 m.default_max = self["max"]\
@@ -1060,7 +1153,6 @@ def dummy(self, context):
         #use the value at frame
         v = [p.co[1] for p in col]
 
-    #print(v)
     _min = min(v)
     _max = max(v)
     return ((_min, _max), (v.index(_min), v.index(_max)))
@@ -1125,6 +1217,7 @@ def register():
     #register_class(SoundVisualiserPanel)
     register_class(ChangeSoundAction)
     register_class(CopySoundAction)
+    register_class(SoundSwitchAction)
     register_class(UnbakeSoundAction)
     register_class(ReBakeSoundAction)
 
@@ -1204,6 +1297,7 @@ def unregister():
     unregister_class(SoundToolSettings)
     unregister_class(ChangeSoundAction)
     unregister_class(CopySoundAction)
+    unregister_class(SoundSwitchAction)
     unregister_class(UnbakeSoundAction)
     unregister_class(ReBakeSoundAction)
 

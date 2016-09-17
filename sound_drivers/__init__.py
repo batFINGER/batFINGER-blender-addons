@@ -23,7 +23,7 @@ bl_info = {
     "location": "Properties > Speaker > Toolshelf",
     "description": "Drive Animations with baked sound files",
     "warning": "Still in Testing",
-    "wiki_url": "https://github.com/batFINGER/batFINGER-blender-addons/wiki/sound-drivers", 
+    "wiki_url": "https://github.com/batFINGER/batFINGER-blender-addons/wiki/sound-drivers",
     "version": (3, 1, 0),
     "blender": (2, 7, 6),
     "tracker_url": "",
@@ -31,7 +31,7 @@ bl_info = {
     "category": "Animation"}
 
 #reload_flag = "bpy" in locals()
-reload_flag = True
+reload_flag = True # in test mode
 
 utilities_names = (
              "subaddon",
@@ -61,7 +61,6 @@ subaddon_names = (
              ("icons", True, True),
              )
 
-#mods = [__import__("%s.%s" % (__name__, name), {}, {}, name) for name in submod_names]
 # use importlib for imports
 from importlib import import_module, reload as reload_module
 # dictionary of utilities modules
@@ -115,10 +114,9 @@ def draw(self, context):
     for subaddon in addons.values():
         module = subaddon.module
         info = subaddon.info
-        '''
+        # make a debug switch or similar
         if not hasattr(module, "bl_info"):
             continue
-        '''
         #TODO better name for mod
         mod = getattr(self, subaddon.name, None)
         box = cf.box()
@@ -128,6 +126,7 @@ subaddonprefs = {"bl_idname": __package__,
                  "draw": draw,
                  "addons": {},
                  }
+
 class SpeakerToolsAddonPreferences(AddonPreferences):
 
     ''' Speaker Tools User Prefs '''
@@ -247,6 +246,9 @@ def register():
     print(addonprefs)
     print(addonprefs.bl_idname)
     handle_registration(True, addons)
+    print(__package__)
+    from addon_utils import check
+    print("CHECK", check(__package__))
 
 def unregister():
     if addonprefs:

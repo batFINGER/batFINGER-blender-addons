@@ -480,6 +480,7 @@ def copy_sound_action(speaker, newname):
     #spk.animation_data.action = action
     #action.name = 'FX'
     cn = action['channel_name']
+    newname = unique_name(speaker.channels, newname)
     action["channel_name"] = newname
 
     channels = action['Channels']
@@ -489,13 +490,17 @@ def copy_sound_action(speaker, newname):
         fcurve.data_path = dp.replace(cn, newname)
 
     action["rna"] = original_action["rna"].replace(cn, newname)
+    spk['_RNA_UI'].update(eval(action["rna"]))
     # make new properties for the speaker.
     for i in range(channels):
         opn = "%s%d" % (cn, i)
         pn = "%s%d" % (newname, i)
         spk[pn] = spk[opn]
+        continue
         oprop = spk['_RNA_UI'].get(opn)
+        print("OPROP", oprop)
         if oprop:
+            print("OPROP")
             ui_props = spk['_RNA_UI'].get(pn)
             if not ui_props:
                 spk['_RNA_UI'][pn] = {}

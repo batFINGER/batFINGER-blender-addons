@@ -372,7 +372,9 @@ def vismode_panel_items(self, context):
     midiprefs = userprefs.addons["midi"].preferences
     midi_support = userprefs.addons["midi"].enabled
     filter_support = userprefs.addons["filter_playback"].enabled
-    visualiser_support = userprefs.addons["soundaction_visualiser"].enabled
+    ui_visualiser_support = userprefs.addons["soundaction_visualiser"].enabled
+    bgl_visualiser_support = userprefs.addons["BGL_draw_visualiser"].enabled
+    visualiser_support = bgl_visualiser_support or ui_visualiser_support
     if bpy.types.BakeSoundPanel.baking:
         return [("BAKE", "BAKE", "Bake Sound to FCurves", 'FCURVE', 64)]
     

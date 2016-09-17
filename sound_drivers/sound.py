@@ -118,19 +118,22 @@ class SoundVisMenu(Menu):
                 if "channels" in action.keys(): # midi atm TODO
                     channels = action["channels"]
                     channels.sort()
+                    '''
                     layout.label("MIDI %s" %  action["wavfile"])
                     layout.separator()
+                    '''
                     groups = [g.name for g in action.groups]
                     groups.sort()
                     for channel in channels:
                         cn = groups[channels.index(channel)]
+                        layout.operator_context = 'EXEC_DEFAULT'
                         op = layout.operator("soundaction.change",
                              text="%s" % (cn))
                         op.action = action.name
                         op.channel = channel
                 else:
-                    layout.label("MUSIC %s" % action.name)
-                    layout.separator()
+                    #layout.label("MUSIC %s" % action.name)
+                    #layout.separator()
                     channel = action["channel_name"]
                     op = layout.operator("soundaction.change",
                          text="%s" % (channel))
