@@ -15,8 +15,21 @@ bl_info = {
 # <pep8-80 compliant>
 import bpy
 from bpy.app.handlers import persistent
-from bpy.props import *
-from bpy.utils import preset_find, preset_paths, register_class, unregister_class
+from bpy.props import (StringProperty,
+                       EnumProperty,
+                       IntProperty,
+                       FloatProperty,
+                       BoolProperty,
+                       BoolVectorProperty,
+                       FloatVectorProperty,
+                       CollectionProperty,
+                       PointerProperty,
+                       )
+from bpy.utils import (preset_find,
+                       preset_paths,
+                       register_class,
+                       unregister_class
+                       )
 from bpy.types import PropertyGroup, Operator, Panel
 
 from math import log, sqrt

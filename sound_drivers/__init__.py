@@ -42,7 +42,7 @@ utilities_names = (
 subaddon_names = (
              ("sounddriver", True, True),
              ("driver_panels", True, True),
-             ("driver_manager", True, True), 
+             ("driver_manager", True, True),
              ("speaker", True, True),
              ("sound", True, True),
              ("midi", False, False),
@@ -80,7 +80,7 @@ handle_registration = getattr(utilities["subaddon"], "handle_registration")
 
 import bpy
 from rna_keymap_ui import draw_kmi
-from bpy.types import  AddonPreferences
+from bpy.types import AddonPreferences
 from bpy.props import StringProperty, BoolProperty, IntProperty
 from bpy.utils import register_class, unregister_class
 
@@ -138,9 +138,9 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             )
 
     midi_support = BoolProperty(
-            name = "Midi Support",
-            description = "Enable Midi Support",
-            default = False,
+            name="Midi Support",
+            description="Enable Midi Support",
+            default=False,
             )
     smf_dir = StringProperty(
             name="smf (midi) python path",
@@ -237,7 +237,7 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
 
         for akm in pie_menu.addon_keymaps:
             row.label(str(akm))
-        ''' 
+        '''
 addonprefs = None
 def register():
     print("SD REGO BABY")
