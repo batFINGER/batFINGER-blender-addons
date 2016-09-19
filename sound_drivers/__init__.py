@@ -31,7 +31,7 @@ bl_info = {
     "category": "Animation"}
 
 #reload_flag = "bpy" in locals()
-reload_flag = True # in test mode
+reload_flag = True  # in test mode
 
 utilities_names = (
              "subaddon",
@@ -80,7 +80,7 @@ handle_registration = getattr(utilities["subaddon"], "handle_registration")
 
 import bpy
 from rna_keymap_ui import draw_kmi
-from bpy.types import AddonPreferences
+from bpy.types import AddonPreferences, Operator
 from bpy.props import StringProperty, BoolProperty, IntProperty
 from bpy.utils import register_class, unregister_class
 
@@ -196,14 +196,14 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
             row.prop(self, "driver_manager_update_speed", slider=True)
         row = layout.row()
         row = layout.prop(self, "midi_support")
-        
+
         # midi support
         if self.midi_support:
             row = layout.row()
             row.prop(self, "smf_dir")
             row = layout.row()
             op = row.operator("wm.url_open", icon='INFO', text="GitHub PySMF Project (Cython)")
-            op.url="https://github.com/dsacre/pysmf"
+            op.url = "https://github.com/dsacre/pysmf"
             row = layout.row()
             if "smf" in locals():
                 row.label("SMF IMPORTED OK...", icon='FILE_TICK')
@@ -214,7 +214,7 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
                     import smf
                     row.label("SMF IMPORTED OK", icon='FILE_TICK')
                 except:
-                    row.label("SMF FAILED", icon ='ERROR')
+                    row.label("SMF FAILED", icon='ERROR')
 
         # end midi support
         row = layout.row()
@@ -238,19 +238,44 @@ class SpeakerToolsAddonPreferences(AddonPreferences):
         for akm in pie_menu.addon_keymaps:
             row.label(str(akm))
         '''
+
+# Open addon prefs to here op.
+
+class SoundDriversShowPrefs(Operator):
+
+    bl_idname = "sound_drivers.pref_show"
+    bl_description = 'Display SoundDrivers addons preferences'
+    bl_label = "Preferences"
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context):
+        wm = context.window_manager
+        #addon_utils.modules_refresh()
+        mod = importlib.import_module(__package__)
+        if mod is None:
+            print("Something is HORRIBLY WRONG...")
+            return {'CANCELLED'}
+        bl_info = getattr(mod, "bl_info", {})
+        mod.bl_info['show_expanded'] = True
+        context.user_preferences.active_section = 'ADDONS'
+        wm.addon_search = bl_info.get("name", __package__)
+        wm.addon_filter = bl_info.get("category", 'ALL')
+        wm.addon_support = wm.addon_support.union({bl_info.get("support", 'TESTING')})
+        #mod = addon_utils.addons_fake_modules.get("sound_drivers")
+
+        bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+        return {'FINISHED'}
+
 addonprefs = None
 def register():
-    print("SD REGO BABY")
     addonprefs = create_addon_prefs(__package__, subaddon_names, subaddonprefs=subaddonprefs, addons=addons)
     register_class(addonprefs)
-    print(addonprefs)
-    print(addonprefs.bl_idname)
+    register_class(SoundDriversShowPrefs)
     handle_registration(True, addons)
-    print(__package__)
     from addon_utils import check
-    print("CHECK", check(__package__))
 
 def unregister():
     if addonprefs:
         unregister_class(addonprefs)
+    unregister_class(SoundDriversShowPrefs)
     handle_registration(False, addons)

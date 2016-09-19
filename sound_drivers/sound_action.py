@@ -558,7 +558,7 @@ class SD_ReBakeTweak(SoundActionBaseOperator, Operator):
             return self.execute(context)
         #return  wm.invoke_popup(self)
 
-    def execute(self, context): 
+    def execute(self, context):
         action = getAction(context.scene.speaker)
         c = {}
         graph = get_context_area(context, c, 'GRAPH_EDITOR')
@@ -571,19 +571,19 @@ class SD_ReBakeTweak(SoundActionBaseOperator, Operator):
         '''
         #hs = action.tweaks.add()
         #hs.type = self.type
-        
+
         if self.type == 'CLEAN':
             bpy.ops.graph.clean(c, threshold=self.threshold)
             print("clean")
             #hs.threshold = self.threshold
-             
+
         elif self.type == 'SMOOTH':
             bpy.ops.graph.smooth(c)
             print("smooth")
 
         self.sd_tweak_type = self.type
-        self.add_to_tweaks(action)        
-        return {'FINISHED'} 
+        self.add_to_tweaks(action)
+        return {'FINISHED'}
 
 class SoundActionMethods:
     icons = ['BLANK1', 'CHECKBOX_DEHLT', 'MESH_PLANE', 'OUTLINER_OB_LATTICE']
