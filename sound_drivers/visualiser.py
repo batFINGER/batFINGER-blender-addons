@@ -480,8 +480,8 @@ class CreateSoundVisualiser(Operator):
             ob['_RNA_UI']["VIS"] = rna
             # call the update function
             re_offset(grid, context)
-
             return {'FINISHED'}
+
         return self.execute(context)
 
     def execute(self, context):
@@ -633,6 +633,8 @@ class VisualiserFuncMenu(bpy.types.Menu):
     bl_idname = "visualiser.functions"
 
     def draw(self, context):
+        handle = context.object
+        vis = handle.get('VIS', 'NONE')
         layout = self.layout
         op = layout.operator("visualiser.edit", text="Select Items")
         op.func = "select"
@@ -640,8 +642,9 @@ class VisualiserFuncMenu(bpy.types.Menu):
         op.func = "copy"
         op = layout.operator("visualiser.edit", text="Delete")
         op.func = "delete"
-        op = layout.operator("visualiser.edit", text="Revert to Unit")
-        op.func = "revert"
+        if vis in {'GRID'}:
+            op = layout.operator("visualiser.edit", text="Revert to Unit")
+            op.func = "revert"
 
 
 class VisualiserRowsColumns(bpy.types.Menu):
