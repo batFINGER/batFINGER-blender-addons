@@ -139,6 +139,7 @@ def revert_visualiser(handle, context):
             break
     scene = context.scene
     scene.objects.active = child
+    # TODO fix for when vis is in a diffent layer
     bpy.ops.object.select_grouped(extend=False, type='CHILDREN_RECURSIVE')
     sel_objs = [o for o in context.selected_objects]
     select_visualiser(handle, context)
@@ -354,7 +355,8 @@ class VisualiserEdit(Operator):
     @classmethod
     def poll(cls, context):
         ob = context.object
-        return "VIS" in ob.keys()
+        # no selected objects if in different layer.
+        return context.selected_objects and "VIS" in ob.keys()
 
     def execute(self, context):
         handle = context.object
