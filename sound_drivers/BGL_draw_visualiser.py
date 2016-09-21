@@ -446,7 +446,6 @@ class BGL_SoundActionFCurveWidget(BGLWidget):
         action = getAction(sp)
         # action = context.area.sound_action # NEW IDEA REFACTO
         if action is None:
-
             return None
 
         area_settings = self.area_settings(context)

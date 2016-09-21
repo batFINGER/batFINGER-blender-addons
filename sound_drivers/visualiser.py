@@ -28,7 +28,6 @@ def FCurve2Curve(holder, fcurve, index, frame_scale, d, use_radius):
     ch = c.data_path.strip('[""]')
     mt = bpy.data.objects.new(ch, None)
     cu = bpy.data.curves.new('path', 'CURVE')
-    #cu.parent = mt
     cu.dimensions = '3D'
     if use_radius:
         cu.fill_mode = 'FULL'
@@ -48,7 +47,6 @@ def FCurve2Curve(holder, fcurve, index, frame_scale, d, use_radius):
             continue
         '''
         w = spline.bezier_points[i]
-        #y = wm.scaleY*sam[i].co[1]
         y = c.evaluate(sam[i].co[0])
         if use_radius:
             w.radius = y
@@ -76,21 +74,18 @@ def CurveVis(context, action, use_radius=False, frame_scale=1.0, d=1):
 
 def rechannel_visualiser(handle, context, from_channel, to_channel):
     # select all the underlings
-    #print("RECHANNEL TEST", from_channel, to_channel)
+    # print("RECHANNEL TEST", from_channel, to_channel)
     select_visualiser(handle, context)
 
     dns = bpy.app.driver_namespace
     dm = dns.get("DriverManager")
-    print(len(context.selected_objects))
     drivers_list = [d for d in dm.all_drivers_list if d.driven_object.id_data in context.selected_objects]
 
-    print("driverslist", drivers_list)
     for d in drivers_list:
         expr = d.fcurve.driver.expression
         d.fcurve.driver.expression = expr.replace(from_channel, to_channel)
 
     var_list = [v for d in drivers_list for v in d.fcurve.driver.variables if v.name.startswith(from_channel)]
-    print([v.name for v in var_list])
     '''
     need to change var name
     targets.datapath
@@ -108,13 +103,12 @@ def retarget_visualiser(handle, context, from_target, to_target):
     for obj in context.selected_objects:
 
         if hasattr(obj, "animation_data") and obj.animation_data is not None:
-            #print("CHECKING OBJ", obj.name)
             targets = [t for d in obj.animation_data.drivers
                        for v in d.driver.variables
                        for t in v.targets
                        if t.id == from_target]
             if len(targets):
-                print(obj.name, len(targets), "... retArgetting")
+                print(obj.name, len(targets), "... reTargetting")
             for t in targets:
                 t.id = to_target
 
@@ -223,7 +217,6 @@ class CreateSoundVisualiserPanel(Panel):
         layout.enabled = False
 
     def grid_draw(self, layout, context):
-        #layout = self.layout
         handle = context.object
         rna = handle["_RNA_UI"]["VIS"].to_dict()
         rows = rna["rows"]
@@ -251,7 +244,7 @@ class CreateSoundVisualiserPanel(Panel):
 
     def edit_draw(self, ob, context):
         layout = self.layout
-        #funcs = ["select", "copy", "delete", "retarget"]
+        # funcs = ["select", "copy", "delete", "retarget"]
         # going to make this a menu for better labelling
         funcs = ["select", "copy", "delete", "revert"]
         row = layout.row(align=True)
@@ -282,7 +275,7 @@ class CreateSoundVisualiserPanel(Panel):
             return
 
         n = channels
-        #rcs = [(x, n/x) for x in range(1, int(sqrt(n))+1) if n % x == 0]
+        # rcs = [(x, n/x) for x in range(1, int(sqrt(n))+1) if n % x == 0]
         rcs = [(x, n / x) for x in range(1, n+1) if n % x == 0]
 
         layout = self.layout
@@ -331,7 +324,6 @@ class ActionVisualiser(Operator):
     ''' Create Visualiser From Action '''
     bl_idname = "soundaction.create_visualiser"
     bl_label = "Action Visualiser"
-    #bl_options = {}
     action = StringProperty(default="", options={'SKIP_SAVE'})
     type = StringProperty(default="", options={'SKIP_SAVE'})
 
@@ -404,7 +396,6 @@ def re_offset(self, context):
     rows = self.rows
     cols = self.cols
     channels = rows * cols
-    #dimensions = Vector((2,2,2))
     dimensions = Vector([rna["dimensions"][axis] for axis in "xyz"])
     print("REOFFSET", rna["dimensions"].items(), dimensions, self.offset)
     offset = Vector(self.offset)
@@ -420,7 +411,6 @@ def re_offset(self, context):
         col = i % cols
         v = Vector((row, col, 0))
 
-        #handle.location = location + v * offset * dimensions
         h.location.x += col * offset.x * dimensions.x
         h.location.y += row * offset.y * dimensions.y
         h.location.z += offset.z * dimensions.z
@@ -435,7 +425,7 @@ class CreateSoundVisualiser(Operator):
     bl_idname = "sounddriver.create_visualiser"
     bl_label = "Create Visualiser"
     # registered ops give me grief.
-    #bl_options = {'REGISTER', 'UNDO'}
+    # bl_options = {'REGISTER', 'UNDO'}
     rows = IntProperty(default=1, options={'SKIP_SAVE'})
     cols = IntProperty(default=1, options={'SKIP_SAVE'})
     offset = FloatVectorProperty(default=(1.0, 1.0, 0.0), size=3,
@@ -481,7 +471,6 @@ class CreateSoundVisualiser(Operator):
     def invoke(self, context, event):
         ob = context.object
         if "VIS" in context.object.keys():
-            #print("CHANGE ROWS AND COLS ON THE VISUALISER")
             rna = ob['_RNA_UI']["VIS"].to_dict()
             grid = context.scene.visualisers.grids[rna["name"]]
             rna['rows'] = grid.rows = self.rows
@@ -520,17 +509,13 @@ class CreateSoundVisualiser(Operator):
         c["active_object"] = None
         c["edit_object"] = None
         c["window"] = context.window
-        #c["selected_bases"] = context.selected_bases.copy()
-        #c["selected_editable_objects"] = context.selected_editable_objects.copy()
-
-        #c["selected_bases"] = []
+        # c["selected_bases"] = context.selected_bases.copy()
+        # c["selected_editable_objects"] = context.selected_editable_objects.copy()
+        # c["selected_bases"] = []
         c["selected_objects"] = originals
         dimensions = bbdim(selected_bbox(context))
-        print("DIM", dimensions)
         # Location of original unit
         location = scene.cursor_location.copy()
-
-        #scene.cursor_location = location
 
         st_handle = bpy.data.objects.new("ST_handle", None)
         st_handle["channels"] = channels
@@ -555,14 +540,12 @@ class CreateSoundVisualiser(Operator):
             if i:
                 scene_objects_set = set(scene.objects)
                 bpy.ops.object.duplicate(c, 'INVOKE_DEFAULT', linked=False)
-                #print("CONTEXT", c)
                 scene.update()
                 new_objects = set(scene.objects) - scene_objects_set
             vis.append((i, handle, new_objects))
         for i, handle, new_objects in vis:
             for o in new_objects:
                 print(o, o.parent)
-                #o = scene.objects.get(name)
                 if not o.parent or o.parent in handles:
                     o.parent = handle
                 if not i or not o.animation_data:
@@ -571,18 +554,14 @@ class CreateSoundVisualiser(Operator):
                 # get the drivers of o
                 # have speaker as a var target
                 # have CH0 as a variable
-                print("HERE", o)
                 drivers = o.animation_data.drivers
                 drivers = [d for d in drivers for v in d.driver.variables for t in v.targets if t.id == sp]
                 for d in drivers:
-
                     all_channels, args = get_driver_settings(d)
-                    print(i, d.id_data, all_channels, args)
                     driver = d.driver
                     expr = driver.expression
                     for ch in all_channels:
                         if len(ch) == 3 and ch.endswith("0"):
-                            print("CH", ch)
                             all_channels.remove(ch)
                             newch = ch.replace("0", str(i))
                             expr = expr.replace(ch, newch)
@@ -594,7 +573,6 @@ class CreateSoundVisualiser(Operator):
                                                all_channels,
                                                args)
 
-        print(vis)
         # distribute
 
         # Properties
@@ -605,7 +583,6 @@ class CreateSoundVisualiser(Operator):
         offset.x = dimensions.x * offset.x
         offset.y = dimensions.y * offset.y
         offset.z = dimensions.z * offset.z
-        print(offset, self.offset)
 
         # deselect all
         bpy.ops.object.select_all(action='DESELECT')
@@ -642,7 +619,6 @@ class CreateSoundVisualiser(Operator):
         grid.name = st_handle.name
         grid.rows = self.rows
         grid.cols = self.cols
-        #grid.channels = channels
         grid.offset = self.offset
 
         return {'FINISHED'}
@@ -674,7 +650,6 @@ class VisualiserRowsColumns(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         n = self.__class__.channels
-        #rcs = [(x, n/x) for x in range(1, int(sqrt(n))+1) if n % x == 0]
         rcs = [(x, n/x) for x in range(1, n+1) if n % x == 0]
         for r, c in rcs:
             row = layout.row()
