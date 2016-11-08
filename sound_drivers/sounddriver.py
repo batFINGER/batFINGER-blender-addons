@@ -491,6 +491,7 @@ def mat_driver_fix(scene):
     for fcurve in fcurves:
         mat = fcurve.id_data
         attr = fcurve.data_path
+        print("test ", attr)
         sp = attr.split(".")
         if len(sp) > 1:
             attr = sp.pop()
